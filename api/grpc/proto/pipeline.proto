@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package pipeline;
+
+option go_package = "github.com/sarikap9/my-pipeline-project/api/grpc/proto";
+
+service PipelineService {
+    rpc CreatePipeline (CreatePipelineRequest) returns (CreatePipelineResponse);
+    rpc ListPipelines (ListPipelinesRequest) returns (ListPipelinesResponse);
+}
+
+message CreatePipelineRequest {
+    string name = 1;
+}
+
+message CreatePipelineResponse {
+    string id = 1;
+    string message = 2;
+}
+
+message ListPipelinesRequest {}
+
+message ListPipelinesResponse {
+    repeated string pipelines = 1;
+}
