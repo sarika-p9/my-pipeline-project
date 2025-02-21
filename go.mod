@@ -1,4 +1,4 @@
-module my-pipeline-project
+module github.com/sarikap9/my-pipeline-project
 
 go 1.23.3
 

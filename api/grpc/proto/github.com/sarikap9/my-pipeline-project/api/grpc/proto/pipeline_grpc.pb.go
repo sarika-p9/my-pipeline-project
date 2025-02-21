@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             v5.29.3
-// source: api/grpc/proto/pipeline.proto
+// source: pipeline.proto
 
 package proto
 
@@ -155,5 +155,5 @@ var PipelineService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "api/grpc/proto/pipeline.proto",
+	Metadata: "pipeline.proto",
 }
