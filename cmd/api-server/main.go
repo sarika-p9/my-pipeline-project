@@ -13,11 +13,12 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/nats-io/nats.go"
 	"github.com/sarikap9/my-pipeline-project/api/grpc/proto"
+	"github.com/sarikap9/my-pipeline-project/api/http/routes"
 	"github.com/sarikap9/my-pipeline-project/internal/grpcserver"
 	"github.com/sarikap9/my-pipeline-project/internal/infrastructure"
 	"github.com/sarikap9/my-pipeline-project/internal/messaging"
+	"github.com/sarikap9/my-pipeline-project/internal/middleware"
 	"github.com/sarikap9/my-pipeline-project/internal/services"
-
 	"github.com/streadway/amqp"
 	"google.golang.org/grpc"
 )
@@ -231,6 +232,37 @@ func main() {
 		Addr:    ":8080",
 		Handler: r,
 	}
+
+	infrastructure.InitDB()
+
+	// Setup router
+	r = routes.SetupRouter()
+
+	// Run the server
+	if err := r.Run(":8080"); err != nil {
+		log.Fatalf("Failed to run server: %v", err)
+	}
+
+	// Apply AuthMiddleware to secure routes
+	authorized := r.Group("/")
+	authorized.Use(middleware.AuthMiddleware())
+
+	// Protected Route Example
+	authorized.POST("/pipelines", func(c *gin.Context) {
+		var newPipeline struct {
+			Name string `json:"name"`
+		}
+		if err := c.BindJSON(&newPipeline); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
+			return
+		}
+
+		// Get userID from context (set by AuthMiddleware)
+		userID, _ := c.Get("userID")
+
+		// Create pipeline logic here using userID
+		c.JSON(http.StatusCreated, gin.H{"message": "Pipeline created", "user_id": userID, "pipeline_name": newPipeline.Name})
+	})
 
 	// Run API server.
 	go func() {
