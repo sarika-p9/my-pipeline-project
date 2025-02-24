@@ -1,9 +1,9 @@
 package services
-package models
 
 import (
 	"log"
 
+	"github.com/sarikap9/my-pipeline-project/internal/models" // Import the models package
 	"gorm.io/gorm"
 )
 

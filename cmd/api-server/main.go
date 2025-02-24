@@ -11,10 +11,13 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"github.com/nats-io/nats.go"
 	"github.com/sarikap9/my-pipeline-project/api/grpc/proto"
 	"github.com/sarikap9/my-pipeline-project/internal/grpcserver"
 	"github.com/sarikap9/my-pipeline-project/internal/infrastructure"
-	"github.com/sarikap9/my-pipeline-project/internal/messaging" // Added messaging package
+	"github.com/sarikap9/my-pipeline-project/internal/messaging"
+	"github.com/sarikap9/my-pipeline-project/internal/services"
+
 	"github.com/streadway/amqp"
 	"google.golang.org/grpc"
 )
@@ -24,6 +27,7 @@ var (
 	grpcClient      proto.PipelineServiceClient
 	rabbitMQConn    *amqp.Connection
 	rabbitMQChannel *amqp.Channel
+	natsConn        *nats.Conn
 )
 
 // initGRPC initializes the gRPC client connection.
@@ -61,6 +65,22 @@ func closeRabbitMQ() {
 	}
 	if rabbitMQConn != nil {
 		rabbitMQConn.Close()
+	}
+}
+
+// initNATS initializes the NATS connection.
+func initNATS() {
+	natsURL := os.Getenv("NATS_URL")
+	if natsURL == "" {
+		natsURL = "nats://localhost:4222" // Default for local
+	}
+	natsConn = infrastructure.ConnectNATS(natsURL)
+}
+
+// closeNATS closes the NATS connection.
+func closeNATS() {
+	if natsConn != nil {
+		natsConn.Close()
 	}
 }
 
@@ -125,12 +145,18 @@ func main() {
 	}
 	log.Println("DB connection and migration successful:", db)
 
-	// Initialize gRPC and RabbitMQ.
+	// Initialize gRPC, RabbitMQ, and NATS.
 	initGRPC()
 	defer closeGRPC()
 
 	initRabbitMQ()
 	defer closeRabbitMQ()
+
+	initNATS()
+	defer closeNATS()
+
+	// Subscribe to pipeline updates.
+	services.SubscribeToEvents(natsConn, "pipeline.updates")
 
 	// Start the gRPC server.
 	go grpcserver.StartGRPCServer()
@@ -138,6 +164,7 @@ func main() {
 	// Start consuming pipeline events.
 	if err := ConsumePipelineEvents(func(msg string) error {
 		log.Printf("Processing pipeline event: %s", msg)
+		services.PublishRealTimeEvent(natsConn, "pipeline.updates", "Processed: "+msg)
 		return nil
 	}); err != nil {
 		log.Fatalf("Failed to start consumer: %v", err)
@@ -190,6 +217,7 @@ func main() {
 			return
 		}
 
+		services.PublishRealTimeEvent(natsConn, "pipeline.updates", "Pipeline Created: "+newPipeline.Name)
 		c.JSON(http.StatusCreated, gin.H{"message": "Pipeline created successfully!"})
 	})
 
