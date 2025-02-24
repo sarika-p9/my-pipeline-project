@@ -1,4 +1,4 @@
-package main
+package grpcserver
 
 import (
 	"log"
@@ -9,7 +9,8 @@ import (
 	"google.golang.org/grpc"
 )
 
-func main() {
+// StartGRPCServer starts the gRPC server
+func StartGRPCServer() {
 	lis, err := net.Listen("tcp", ":50051")
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
