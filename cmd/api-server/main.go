@@ -13,12 +13,18 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/sarikap9/my-pipeline-project/api/grpc/proto"
 	"github.com/sarikap9/my-pipeline-project/internal/grpcserver"
-	"github.com/sarikap9/my-pipeline-project/internal/infrastructure" // Contains both raw Supabase and GORM code
+	"github.com/sarikap9/my-pipeline-project/internal/infrastructure"
+	"github.com/sarikap9/my-pipeline-project/internal/messaging" // Added messaging package
+	"github.com/streadway/amqp"
 	"google.golang.org/grpc"
 )
 
-var grpcConn *grpc.ClientConn
-var grpcClient proto.PipelineServiceClient
+var (
+	grpcConn        *grpc.ClientConn
+	grpcClient      proto.PipelineServiceClient
+	rabbitMQConn    *amqp.Connection
+	rabbitMQChannel *amqp.Channel
+)
 
 // initGRPC initializes the gRPC client connection.
 func initGRPC() {
@@ -37,35 +43,119 @@ func closeGRPC() {
 	}
 }
 
+// initRabbitMQ initializes the RabbitMQ connection.
+func initRabbitMQ() {
+	var err error
+	rabbitURL := "amqp://guest:guest@localhost:5672/"
+	rabbitMQConn, rabbitMQChannel, err = messaging.ConnectRabbitMQ(rabbitURL)
+	if err != nil {
+		log.Fatalf("Failed to connect to RabbitMQ: %v", err)
+	}
+	log.Println("✅ Connected to RabbitMQ")
+}
+
+// closeRabbitMQ closes the RabbitMQ connection.
+func closeRabbitMQ() {
+	if rabbitMQChannel != nil {
+		rabbitMQChannel.Close()
+	}
+	if rabbitMQConn != nil {
+		rabbitMQConn.Close()
+	}
+}
+
+// ConsumePipelineEvents listens to the "pipelines" queue and processes messages.
+func ConsumePipelineEvents(handler func(string) error) error {
+	queue, err := rabbitMQChannel.QueueDeclare(
+		"pipelines",
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	msgs, err := rabbitMQChannel.Consume(
+		queue.Name,
+		"",
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		for d := range msgs {
+			log.Printf("📥 Received a pipeline event: %s", d.Body)
+			err := handler(string(d.Body))
+			if err != nil {
+				log.Printf("❌ Error processing message: %v", err)
+				d.Nack(false, true)
+				continue
+			}
+			d.Ack(false)
+		}
+	}()
+
+	return nil
+}
+
 func main() {
-	// Load environment variables from .env file.
+	// Load environment variables.
 	if err := godotenv.Load(); err != nil {
 		log.Fatal("Error loading .env file")
 	}
 
-	// Retrieve Supabase connection details from environment variables.
+	// Initialize Supabase.
 	supabaseURL := os.Getenv("SUPABASE_URL")
 	supabaseKey := os.Getenv("SUPABASE_KEY")
 	if supabaseURL == "" || supabaseKey == "" {
 		log.Fatal("SUPABASE_URL and SUPABASE_KEY must be set in the .env file")
 	}
-
-	// Initialize Supabase connection using GORM and perform auto-migration.
 	db, err := infrastructure.InitSupabaseWithGORM(supabaseURL, supabaseKey)
 	if err != nil {
 		log.Fatalf("Initialization failed: %v", err)
 	}
 	log.Println("DB connection and migration successful:", db)
 
-	// Start the gRPC server in a separate goroutine.
-	go grpcserver.StartGRPCServer()
-
-	// Initialize Gin router for the API server.
-	r := gin.Default()
-
-	// Initialize the gRPC client.
+	// Initialize gRPC and RabbitMQ.
 	initGRPC()
 	defer closeGRPC()
+
+	initRabbitMQ()
+	defer closeRabbitMQ()
+
+	// Start the gRPC server.
+	go grpcserver.StartGRPCServer()
+
+	// Start consuming pipeline events.
+	if err := ConsumePipelineEvents(func(msg string) error {
+		log.Printf("Processing pipeline event: %s", msg)
+		return nil
+	}); err != nil {
+		log.Fatalf("Failed to start consumer: %v", err)
+	}
+
+	// Initialize messaging producer.
+	producer, err := messaging.NewProducer(rabbitMQChannel, "pipeline_tasks")
+	if err != nil {
+		log.Fatalf("Failed to create producer: %v", err)
+	}
+
+	// Publish a test message.
+	if err := producer.Publish("Initial test message"); err != nil {
+		log.Printf("Error publishing initial message: %v", err)
+	}
+
+	// Initialize Gin router.
+	r := gin.Default()
 
 	// API route: Check server status.
 	r.GET("/status", func(c *gin.Context) {
@@ -82,7 +172,7 @@ func main() {
 		c.JSON(http.StatusOK, gin.H{"pipelines": resp.GetPipelines()})
 	})
 
-	// API route: Create new pipeline via gRPC.
+	// API route: Create new pipeline.
 	r.POST("/pipelines", func(c *gin.Context) {
 		var newPipeline struct {
 			Name string `json:"name"`
@@ -114,25 +204,23 @@ func main() {
 		Handler: r,
 	}
 
-	// Run the API server in a goroutine.
+	// Run API server.
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Could not run API server: %v", err)
 		}
 	}()
 
-	// Graceful shutdown logic.
+	// Graceful shutdown.
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 	<-quit
 
 	log.Println("Shutting down servers...")
 
-	// Create a timeout context for shutdown.
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Shutdown the API server gracefully.
 	if err := srv.Shutdown(ctx); err != nil {
 		log.Fatalf("API server forced to shutdown: %v", err)
 	}
