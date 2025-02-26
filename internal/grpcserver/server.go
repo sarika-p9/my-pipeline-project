@@ -4,8 +4,8 @@ import (
 	"log"
 	"net"
 
-	pb "github.com/sarikap9/my-pipeline-project/api/grpc/proto"
-	"github.com/sarikap9/my-pipeline-project/internal/adapters/primary"
+	pb "github.com/sarika-p9/my-pipeline-project/api/grpc/proto"
+	"github.com/sarika-p9/my-pipeline-project/internal/adapters/primary"
 	"google.golang.org/grpc"
 )
 

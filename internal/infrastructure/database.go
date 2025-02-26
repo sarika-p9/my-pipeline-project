@@ -1,42 +1,33 @@
 package infrastructure
 
 import (
-	"database/sql"
 	"log"
 
-	_ "github.com/lib/pq"
-	"github.com/sarikap9/my-pipeline-project/internal/models"
+	"github.com/sarika-p9/my-pipeline-project/internal/models"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
-var DB *sql.DB
+var DB *gorm.DB
 
 func InitDB() {
+	dsn := "host=localhost user=postgres password=postgres dbname=postgres port=5432 sslmode=disable"
 	var err error
-	DB, err = sql.Open("postgres", "postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable")
+	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{}) // ✅ Assign DB globally
 	if err != nil {
-		log.Fatal("Failed to connect to database:", err)
+		log.Fatal("❌ Failed to connect to database:", err)
 	}
 
-	if err = DB.Ping(); err != nil {
-		log.Fatal("Database is unreachable:", err)
+	log.Println("✅ Connected to Supabase via GORM!")
+
+	if DB == nil {
+		log.Fatal("❌ Database connection is NIL after initialization!")
 	}
 
-	log.Println("Connected to Supabase (PostgreSQL)")
-}
-
-// CreateUser inserts a new user into the database.
-func CreateUser(user *models.User) error {
-	_, err := DB.Exec("INSERT INTO users (email, password) VALUES ($1, $2)", user.Email, user.Password)
-	return err
-}
-
-// GetUserByEmail retrieves a user by email.
-func GetUserByEmail(email string) (*models.User, error) {
-	user := &models.User{}
-	err := DB.QueryRow("SELECT id, email, password FROM users WHERE email = $1", email).
-		Scan(&user.ID, &user.Email, &user.Password)
+	err = DB.AutoMigrate(&models.User{})
 	if err != nil {
-		return nil, err
+		log.Fatal("❌ Failed to migrate database:", err)
 	}
-	return user, nil
+
+	log.Println("✅ Database migration successful!")
 }

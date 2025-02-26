@@ -19,6 +19,9 @@ func NewProducer(ch *amqp.Channel, queueName string) (*Producer, error) {
 		return nil, err
 	}
 
+	// ✅ Remove or adjust connection log here
+	// log.Println("✅ Connected to RabbitMQ") // REMOVE if present here
+
 	return &Producer{channel: ch, queue: queue}, nil
 }
 

@@ -2,36 +2,52 @@ package services
 
 import (
 	"errors"
+	"fmt"
 
-	"github.com/sarikap9/my-pipeline-project/internal/infrastructure"
-	"github.com/sarikap9/my-pipeline-project/internal/models"
+	"github.com/sarika-p9/my-pipeline-project/internal/infrastructure"
+	"github.com/sarika-p9/my-pipeline-project/internal/models"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
-// RegisterUser creates a new user
+// RegisterUser handles user registration
 func RegisterUser(email, password string) error {
 	var existingUser models.User
-	err := infrastructure.DB.QueryRow("SELECT id FROM users WHERE email=$1", email).Scan(&existingUser.ID)
+
+	// Check if user already exists
+	err := infrastructure.DB.Where("email = ?", email).First(&existingUser).Error
 	if err == nil {
-		return errors.New("user already exists")
+		return fmt.Errorf("user already exists")
 	}
 
+	// Hash the password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to hash password: %v", err)
 	}
 
-	_, err = infrastructure.DB.Exec("INSERT INTO users (email, password) VALUES ($1, $2)", email, hashedPassword)
-	return err
+	// Create new user
+	user := &models.User{
+		Email:    email,
+		Password: string(hashedPassword),
+	}
+
+	if err := infrastructure.DB.Create(user).Error; err != nil {
+		return fmt.Errorf("failed to create user: %v", err)
+	}
+
+	return nil
 }
 
 // AuthenticateUser verifies user credentials
 func AuthenticateUser(email, password string) (*models.User, error) {
 	var user models.User
-	err := infrastructure.DB.QueryRow("SELECT id, password FROM users WHERE email=$1", email).
-		Scan(&user.ID, &user.Password)
+	err := infrastructure.DB.Where("email = ?", email).First(&user).Error
 	if err != nil {
-		return nil, errors.New("user not found")
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("user not found")
+		}
+		return nil, err // Handle other DB errors
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))

@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	pb "github.com/sarikap9/my-pipeline-project/api/grpc/proto"
+	pb "github.com/sarika-p9/my-pipeline-project/api/grpc/proto"
 )
 
 func TestCreatePipeline(t *testing.T) {

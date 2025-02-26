@@ -12,13 +12,13 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/nats-io/nats.go"
-	"github.com/sarikap9/my-pipeline-project/api/grpc/proto"
-	"github.com/sarikap9/my-pipeline-project/api/http/routes"
-	"github.com/sarikap9/my-pipeline-project/internal/grpcserver"
-	"github.com/sarikap9/my-pipeline-project/internal/infrastructure"
-	"github.com/sarikap9/my-pipeline-project/internal/messaging"
-	"github.com/sarikap9/my-pipeline-project/internal/middleware"
-	"github.com/sarikap9/my-pipeline-project/internal/services"
+	"github.com/sarika-p9/my-pipeline-project/api/grpc/proto"
+	"github.com/sarika-p9/my-pipeline-project/internal/controllers"
+	"github.com/sarika-p9/my-pipeline-project/internal/grpcserver"
+	"github.com/sarika-p9/my-pipeline-project/internal/infrastructure"
+	"github.com/sarika-p9/my-pipeline-project/internal/messaging"
+	"github.com/sarika-p9/my-pipeline-project/internal/middleware"
+	"github.com/sarika-p9/my-pipeline-project/internal/services"
 	"github.com/streadway/amqp"
 	"google.golang.org/grpc"
 )
@@ -49,6 +49,7 @@ func closeGRPC() {
 }
 
 // initRabbitMQ initializes the RabbitMQ connection.
+// initRabbitMQ initializes the RabbitMQ connection.
 func initRabbitMQ() {
 	var err error
 	rabbitURL := "amqp://guest:guest@localhost:5672/"
@@ -56,7 +57,8 @@ func initRabbitMQ() {
 	if err != nil {
 		log.Fatalf("Failed to connect to RabbitMQ: %v", err)
 	}
-	log.Println("✅ Connected to RabbitMQ")
+	// ❌ Remove this redundant log
+	// log.Println("✅ Connected to RabbitMQ")
 }
 
 // closeRabbitMQ closes the RabbitMQ connection.
@@ -73,7 +75,7 @@ func closeRabbitMQ() {
 func initNATS() {
 	natsURL := os.Getenv("NATS_URL")
 	if natsURL == "" {
-		natsURL = "nats://localhost:4222" // Default for local
+		natsURL = "nats://localhost:4222"
 	}
 	natsConn = infrastructure.ConnectNATS(natsURL)
 }
@@ -129,24 +131,24 @@ func ConsumePipelineEvents(handler func(string) error) error {
 }
 
 func main() {
-	// Load environment variables.
 	if err := godotenv.Load(); err != nil {
 		log.Fatal("Error loading .env file")
 	}
 
-	// Initialize Supabase.
 	supabaseURL := os.Getenv("SUPABASE_URL")
 	supabaseKey := os.Getenv("SUPABASE_KEY")
 	if supabaseURL == "" || supabaseKey == "" {
 		log.Fatal("SUPABASE_URL and SUPABASE_KEY must be set in the .env file")
 	}
+
+	// ✅ Initialize DB and set it globally
 	db, err := infrastructure.InitSupabaseWithGORM(supabaseURL, supabaseKey)
 	if err != nil {
 		log.Fatalf("Initialization failed: %v", err)
 	}
-	log.Println("DB connection and migration successful:", db)
+	infrastructure.DB = db // ✅ Ensure global DB is set
+	log.Println("✅ DB connection and migration successful!")
 
-	// Initialize gRPC, RabbitMQ, and NATS.
 	initGRPC()
 	defer closeGRPC()
 
@@ -156,13 +158,10 @@ func main() {
 	initNATS()
 	defer closeNATS()
 
-	// Subscribe to pipeline updates.
 	services.SubscribeToEvents(natsConn, "pipeline.updates")
 
-	// Start the gRPC server.
 	go grpcserver.StartGRPCServer()
 
-	// Start consuming pipeline events.
 	if err := ConsumePipelineEvents(func(msg string) error {
 		log.Printf("Processing pipeline event: %s", msg)
 		services.PublishRealTimeEvent(natsConn, "pipeline.updates", "Processed: "+msg)
@@ -171,83 +170,23 @@ func main() {
 		log.Fatalf("Failed to start consumer: %v", err)
 	}
 
-	// Initialize messaging producer.
 	producer, err := messaging.NewProducer(rabbitMQChannel, "pipeline_tasks")
 	if err != nil {
 		log.Fatalf("Failed to create producer: %v", err)
 	}
 
-	// Publish a test message.
 	if err := producer.Publish("Initial test message"); err != nil {
 		log.Printf("Error publishing initial message: %v", err)
 	}
 
-	// Initialize Gin router.
-	r := gin.Default()
+	r := gin.New()
+	r.Use(gin.Logger(), gin.Recovery())
 
-	// API route: Check server status.
-	r.GET("/status", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "API Server is running!"})
-	})
+	r.POST("/register", controllers.Register)
+	r.POST("/login", controllers.Login)
 
-	// API route: List pipelines via gRPC.
-	r.GET("/pipelines", func(c *gin.Context) {
-		resp, err := grpcClient.ListPipelines(context.Background(), &proto.ListPipelinesRequest{})
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"pipelines": resp.GetPipelines()})
-	})
-
-	// API route: Create new pipeline.
-	r.POST("/pipelines", func(c *gin.Context) {
-		var newPipeline struct {
-			Name string `json:"name"`
-		}
-		if err := c.BindJSON(&newPipeline); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
-			return
-		}
-
-		_, err := grpcClient.CreatePipeline(context.Background(), &proto.CreatePipelineRequest{
-			Name: newPipeline.Name,
-		})
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-
-		services.PublishRealTimeEvent(natsConn, "pipeline.updates", "Pipeline Created: "+newPipeline.Name)
-		c.JSON(http.StatusCreated, gin.H{"message": "Pipeline created successfully!"})
-	})
-
-	// API route: Dummy worker list.
-	r.GET("/workers", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"workers": []string{"Worker1", "Worker2"}})
-	})
-
-	// Set up HTTP server.
-	srv := &http.Server{
-		Addr:    ":8080",
-		Handler: r,
-	}
-
-	infrastructure.InitDB()
-
-	// Setup router
-	r = routes.SetupRouter()
-
-	// Run the server
-	if err := r.Run(":8080"); err != nil {
-		log.Fatalf("Failed to run server: %v", err)
-	}
-
-	// Apply AuthMiddleware to secure routes
 	authorized := r.Group("/")
 	authorized.Use(middleware.AuthMiddleware())
-
-	// Protected Route Example
 	authorized.POST("/pipelines", func(c *gin.Context) {
 		var newPipeline struct {
 			Name string `json:"name"`
@@ -257,21 +196,38 @@ func main() {
 			return
 		}
 
-		// Get userID from context (set by AuthMiddleware)
 		userID, _ := c.Get("userID")
-
-		// Create pipeline logic here using userID
 		c.JSON(http.StatusCreated, gin.H{"message": "Pipeline created", "user_id": userID, "pipeline_name": newPipeline.Name})
 	})
 
-	// Run API server.
+	r.GET("/status", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "API Server is running!"})
+	})
+
+	r.GET("/pipelines", func(c *gin.Context) {
+		resp, err := grpcClient.ListPipelines(context.Background(), &proto.ListPipelinesRequest{})
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"pipelines": resp.GetPipelines()})
+	})
+
+	r.GET("/workers", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"workers": []string{"Worker1", "Worker2"}})
+	})
+
+	srv := &http.Server{
+		Addr:    ":8080",
+		Handler: r,
+	}
+
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Could not run API server: %v", err)
 		}
 	}()
 
-	// Graceful shutdown.
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 	<-quit

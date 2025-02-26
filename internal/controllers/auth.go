@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sarikap9/my-pipeline-project/internal/services"
-	"github.com/sarikap9/my-pipeline-project/internal/utils"
+	"github.com/sarika-p9/my-pipeline-project/internal/services"
+	"github.com/sarika-p9/my-pipeline-project/internal/utils"
 )
 
 func Register(c *gin.Context) {

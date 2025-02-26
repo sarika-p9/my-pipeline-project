@@ -10,7 +10,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
-	"github.com/sarikap9/my-pipeline-project/api/grpc/proto"
+	"github.com/sarika-p9/my-pipeline-project/api/grpc/proto"
 )
 
 // PipelineServiceServer implements the gRPC service

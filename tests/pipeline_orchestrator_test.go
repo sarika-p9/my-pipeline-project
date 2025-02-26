@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/sarikap9/my-pipeline-project/internal/core/domain"
+	"github.com/sarika-p9/my-pipeline-project/internal/core/domain"
 	"github.com/stretchr/testify/assert"
 )
 

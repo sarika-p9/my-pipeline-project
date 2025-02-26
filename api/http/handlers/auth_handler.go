@@ -1,49 +1,57 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sarikap9/my-pipeline-project/internal/services"
+	"github.com/sarika-p9/my-pipeline-project/internal/infrastructure"
+	"github.com/sarika-p9/my-pipeline-project/internal/models"
 )
 
-// Register handles user registration.
-func Register(c *gin.Context) {
-	var req struct {
-		Email    string `json:"email" binding:"required,email"`
-		Password string `json:"password" binding:"required,min=6"`
-	}
-
-	if err := c.ShouldBindJSON(&req); err != nil {
+func RegisterUser(c *gin.Context) {
+	var input models.User
+	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	if err := services.RegisterUser(req.Email, req.Password); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	// ✅ Ensure using global DB
+	db := infrastructure.DB
+	if db == nil {
+		log.Println("❌ Database connection is NIL in RegisterUser!")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database not initialized"})
+		return
+	}
+
+	// Step 3: Log DB connection
+	log.Printf("Using DB connection: %v", db)
+
+	// Step 4: Log existing users
+	var users []models.User
+	if err := db.Find(&users).Error; err != nil {
+		log.Printf("Error fetching users: %v", err)
+	} else {
+		log.Printf("Users in DB: %+v", users)
+	}
+
+	// Check if user exists
+	existingUser, err := models.GetUserByEmail(db, input.Email)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error checking for existing user"})
+		return
+	}
+
+	if existingUser != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "User already exists"})
+		return
+	}
+
+	// Create user
+	if err := input.CreateUser(db); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
 		return
 	}
 
 	c.JSON(http.StatusCreated, gin.H{"message": "User registered successfully"})
-}
-
-// Login handles user authentication.
-func Login(c *gin.Context) {
-	var req struct {
-		Email    string `json:"email" binding:"required,email"`
-		Password string `json:"password" binding:"required"`
-	}
-
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	user, err := services.AuthenticateUser(req.Email, req.Password)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "Login successful", "user": user.Email})
 }

@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"log"
 
-	"github.com/sarikap9/my-pipeline-project/internal/infrastructure"
+	"github.com/sarika-p9/my-pipeline-project/internal/infrastructure"
 )
 
 type Task struct {

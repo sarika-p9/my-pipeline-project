@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sarikap9/my-pipeline-project/internal/utils"
+	"github.com/sarika-p9/my-pipeline-project/internal/utils"
 )
 
 // AuthMiddleware validates JWT tokens

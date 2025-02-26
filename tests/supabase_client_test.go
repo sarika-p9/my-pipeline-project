@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/sarikap9/my-pipeline-project/internal/infrastructure"
+	"github.com/sarika-p9/my-pipeline-project/internal/infrastructure"
 )
 
 func TestInsertPipeline(t *testing.T) {

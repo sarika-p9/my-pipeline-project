@@ -2,7 +2,7 @@ package routes
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/sarikap9/my-pipeline-project/api/http/handlers"
+	"github.com/sarika-p9/my-pipeline-project/api/http/handlers"
 )
 
 func SetupRouter() *gin.Engine {
@@ -10,7 +10,7 @@ func SetupRouter() *gin.Engine {
 
 	api := r.Group("/api")
 	{
-		api.POST("/register", handlers.Register)
+		api.POST("/register", handlers.RegisterUser)
 		api.POST("/login", handlers.Login)
 	}
 

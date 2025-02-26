@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/sarikap9/my-pipeline-project/api/grpc/proto"
+	"github.com/sarika-p9/my-pipeline-project/api/grpc/proto"
 	"github.com/stretchr/testify/assert"
 )
 

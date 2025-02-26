@@ -3,7 +3,7 @@ package services
 import (
 	"log"
 
-	"github.com/sarikap9/my-pipeline-project/internal/models" // Import the models package
+	"github.com/sarika-p9/my-pipeline-project/internal/models" // Import the models package
 	"gorm.io/gorm"
 )
 
