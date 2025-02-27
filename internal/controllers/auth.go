@@ -1,55 +1,36 @@
 package controllers
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sarika-p9/my-pipeline-project/internal/services"
-	"github.com/sarika-p9/my-pipeline-project/internal/utils"
 )
 
+// Register handles user registration via Supabase and stores the user in the database.
 func Register(c *gin.Context) {
 	var req struct {
 		Email    string `json:"email"`
 		Password string `json:"password"`
 	}
 
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+	if err := c.BindJSON(&req); err != nil {
+		log.Println("❌ Invalid request data:", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
 		return
 	}
 
-	err := services.RegisterUser(req.Email, req.Password)
+	log.Println("🔹 Registering user:", req.Email)
+
+	// Register the user in Supabase and store them in the database
+	userID, err := services.RegisterUser(req.Email, req.Password)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		log.Println("❌ Failed to create user:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"message": "User registered successfully"})
-}
-
-// Login handles user login and issues JWT
-func Login(c *gin.Context) {
-	var req struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
-		return
-	}
-
-	user, err := services.AuthenticateUser(req.Email, req.Password)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
-		return
-	}
-
-	token, err := utils.GenerateJWT(int(user.ID))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"token": token})
+	log.Println("✅ User registered successfully:", req.Email, "with Supabase ID:", userID)
+	c.JSON(http.StatusCreated, gin.H{"message": "User registered. Please verify your email."})
 }

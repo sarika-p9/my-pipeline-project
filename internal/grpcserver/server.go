@@ -4,23 +4,30 @@ import (
 	"log"
 	"net"
 
-	pb "github.com/sarika-p9/my-pipeline-project/api/grpc/proto"
-	"github.com/sarika-p9/my-pipeline-project/internal/adapters/primary"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
+
+	"github.com/sarika-p9/my-pipeline-project/api/grpc/proto"
+	"github.com/sarika-p9/my-pipeline-project/internal/infrastructure"
+	"github.com/sarika-p9/my-pipeline-project/internal/services"
 )
 
 // StartGRPCServer starts the gRPC server
 func StartGRPCServer() {
-	lis, err := net.Listen("tcp", ":50051")
+	listener, err := net.Listen("tcp", ":50051")
 	if err != nil {
-		log.Fatalf("Failed to listen: %v", err)
+		log.Fatalf("❌ Failed to listen: %v", err)
 	}
 
 	grpcServer := grpc.NewServer()
-	pb.RegisterPipelineServiceServer(grpcServer, &primary.PipelineServer{})
+	pipelineService := services.NewPipelineService(infrastructure.GetDatabaseInstance()) // ✅ Fixed this line
+	proto.RegisterPipelineServiceServer(grpcServer, pipelineService)
 
-	log.Println("gRPC Server is running on port 50051...")
-	if err := grpcServer.Serve(lis); err != nil {
-		log.Fatalf("Failed to serve: %v", err)
+	// ✅ Enable gRPC reflection
+	reflection.Register(grpcServer)
+
+	log.Println("✅ gRPC Server started on port 50051")
+	if err := grpcServer.Serve(listener); err != nil {
+		log.Fatalf("❌ Failed to serve: %v", err)
 	}
 }

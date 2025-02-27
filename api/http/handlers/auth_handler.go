@@ -1,57 +1,81 @@
 package handlers
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sarika-p9/my-pipeline-project/internal/infrastructure"
 	"github.com/sarika-p9/my-pipeline-project/internal/models"
+	"github.com/sarika-p9/my-pipeline-project/internal/services"
+	"gorm.io/gorm"
 )
 
-func RegisterUser(c *gin.Context) {
-	var input models.User
-	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+// AuthHandler handles authentication-related requests
+type AuthHandler struct {
+	DB *gorm.DB
+}
+
+// SignupHandler registers a user in Supabase and stores info in PostgreSQL
+func (h *AuthHandler) SignupHandler(c *gin.Context) {
+	var req struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+	// Bind JSON request
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
 	}
 
-	// ✅ Ensure using global DB
-	db := infrastructure.DB
-	if db == nil {
-		log.Println("❌ Database connection is NIL in RegisterUser!")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database not initialized"})
-		return
-	}
-
-	// Step 3: Log DB connection
-	log.Printf("Using DB connection: %v", db)
-
-	// Step 4: Log existing users
-	var users []models.User
-	if err := db.Find(&users).Error; err != nil {
-		log.Printf("Error fetching users: %v", err)
-	} else {
-		log.Printf("Users in DB: %+v", users)
-	}
-
-	// Check if user exists
-	existingUser, err := models.GetUserByEmail(db, input.Email)
+	// Register user in Supabase
+	user, err := services.RegisterUserInSupabase(req.Email, req.Password)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error checking for existing user"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	if existingUser != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "User already exists"})
+	// Ensure Supabase ID exists
+	if user.ID == "" {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve Supabase user ID"})
 		return
 	}
 
-	// Create user
-	if err := input.CreateUser(db); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
+	// Store user info in PostgreSQL
+	newUser := models.User{
+		ID:       user.ID, // ✅ Use Supabase user ID
+		Email:    req.Email,
+		Verified: false, // Default to false until verified
+	}
+
+	if err := models.CreateUser(h.DB, &newUser); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to store user in database"})
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"message": "User registered successfully"})
+	// Return success response
+	c.JSON(http.StatusOK, gin.H{"user": gin.H{"id": newUser.ID, "email": newUser.Email}})
+}
+
+// LoginHandler logs in a user via Supabase
+func (h *AuthHandler) LoginHandler(c *gin.Context) {
+	var req struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+	// Bind JSON request
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	// Authenticate user via Supabase
+	session, err := services.LoginUserInSupabase(req.Email, req.Password)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Return success response
+	c.JSON(http.StatusOK, gin.H{"session": session})
 }

@@ -2,32 +2,48 @@ package infrastructure
 
 import (
 	"log"
+	"os"
 
-	"github.com/sarika-p9/my-pipeline-project/internal/models"
+	"github.com/sarika-p9/my-pipeline-project/internal/types"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
-var DB *gorm.DB
+var db *gorm.DB
 
-func InitDB() {
-	dsn := "host=localhost user=postgres password=postgres dbname=postgres port=5432 sslmode=disable"
+// InitDatabase sets up the database connection using environment variables
+func InitDatabase() {
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		log.Fatal("❌ DATABASE_URL is not set in environment variables")
+	}
+
 	var err error
-	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{}) // ✅ Assign DB globally
+	db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		log.Fatal("❌ Failed to connect to database:", err)
+		log.Fatalf("❌ Failed to connect to database: %v", err)
 	}
+	log.Println("✅ Database connected")
 
-	log.Println("✅ Connected to Supabase via GORM!")
-
-	if DB == nil {
-		log.Fatal("❌ Database connection is NIL after initialization!")
-	}
-
-	err = DB.AutoMigrate(&models.User{})
+	// Auto-migrate all necessary tables
+	err = db.AutoMigrate(
+		&types.User{}, // Add other models if needed
+	)
 	if err != nil {
-		log.Fatal("❌ Failed to migrate database:", err)
+		log.Fatalf("❌ AutoMigrate failed: %v", err)
 	}
+}
 
-	log.Println("✅ Database migration successful!")
+// GetDatabaseInstance returns the initialized database connection
+func GetDatabaseInstance() *gorm.DB {
+	if db == nil {
+		log.Fatal("❌ Database instance is not initialized. Call InitDatabase first.")
+	}
+	return db
+}
+
+// InsertUserIntoDB inserts a user into the database
+func InsertUserIntoDB(user types.User) error {
+	db := GetDatabaseInstance()
+	return db.Create(&user).Error
 }

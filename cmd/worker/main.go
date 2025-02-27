@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/sarika-p9/my-pipeline-project/internal/infrastructure"
+	"github.com/sarika-p9/my-pipeline-project/internal/models"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
@@ -16,38 +18,39 @@ import (
 // PipelineServiceServer implements the gRPC service
 type PipelineServiceServer struct {
 	proto.UnimplementedPipelineServiceServer
-	pipelines map[string]string // Stores pipeline ID and name
 }
 
 // CreatePipeline creates a new pipeline with a unique ID
 func (s *PipelineServiceServer) CreatePipeline(ctx context.Context, req *proto.CreatePipelineRequest) (*proto.CreatePipelineResponse, error) {
-	id := uuid.New().String()
-	s.pipelines[id] = req.GetName()
+	pipelineID := uuid.New().String()
 
-	log.Printf("Created Pipeline: ID=%s, Name=%s", id, req.GetName())
-
-	// Simulate async processing
-	go func(pipelineID, pipelineName string) {
-		log.Printf("Processing pipeline: ID=%s, Name=%s", pipelineID, pipelineName)
-		time.Sleep(5 * time.Second) // Simulate work
-		log.Printf("Pipeline processed: ID=%s, Name=%s", pipelineID, pipelineName)
-	}(id, req.GetName())
-
-	return &proto.CreatePipelineResponse{
-		Id:      id,
-		Message: "Pipeline created successfully and is being processed",
-	}, nil
-}
-
-// ListPipelines returns all created pipelines
-func (s *PipelineServiceServer) ListPipelines(ctx context.Context, req *proto.ListPipelinesRequest) (*proto.ListPipelinesResponse, error) {
-	var pipelineNames []string
-	for _, name := range s.pipelines {
-		pipelineNames = append(pipelineNames, name)
+	pipeline := models.Pipeline{
+		ID:        pipelineID,
+		Name:      req.GetName(),
+		UserID:    req.GetUserId(),
+		Status:    "processing",
+		CreatedAt: time.Now(),
 	}
 
-	return &proto.ListPipelinesResponse{
-		Pipelines: pipelineNames,
+	// ✅ Store pipeline in Supabase
+	err := infrastructure.InsertPipeline(&pipeline)
+	if err != nil {
+		log.Printf("Failed to insert pipeline: %v", err)
+		return nil, err
+	}
+
+	log.Printf("Created Pipeline: ID=%s, Name=%s, UserID=%s", pipelineID, req.GetName(), req.GetUserId())
+
+	// Simulate async processing
+	go func(pipelineID string) {
+		time.Sleep(5 * time.Second) // Simulate work
+		infrastructure.UpdatePipelineStatus(pipelineID, "completed")
+		log.Printf("Pipeline processed: ID=%s", pipelineID)
+	}(pipelineID)
+
+	return &proto.CreatePipelineResponse{
+		Id:      pipelineID,
+		Message: "Pipeline created successfully and is being processed",
 	}, nil
 }
 
@@ -58,7 +61,7 @@ func main() {
 	}
 
 	grpcServer := grpc.NewServer()
-	pipelineService := &PipelineServiceServer{pipelines: make(map[string]string)}
+	pipelineService := &PipelineServiceServer{}
 
 	// Register the service
 	proto.RegisterPipelineServiceServer(grpcServer, pipelineService)

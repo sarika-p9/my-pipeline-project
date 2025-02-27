@@ -19,8 +19,8 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	PipelineService_CreatePipeline_FullMethodName = "/pipeline.PipelineService/CreatePipeline"
-	PipelineService_ListPipelines_FullMethodName  = "/pipeline.PipelineService/ListPipelines"
+	PipelineService_CreatePipeline_FullMethodName = "/proto.PipelineService/CreatePipeline"
+	PipelineService_ListPipelines_FullMethodName  = "/proto.PipelineService/ListPipelines"
 )
 
 // PipelineServiceClient is the client API for PipelineService service.
@@ -142,7 +142,7 @@ func _PipelineService_ListPipelines_Handler(srv interface{}, ctx context.Context
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var PipelineService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "pipeline.PipelineService",
+	ServiceName: "proto.PipelineService",
 	HandlerType: (*PipelineServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

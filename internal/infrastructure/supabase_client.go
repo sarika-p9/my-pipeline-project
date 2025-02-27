@@ -1,50 +1,36 @@
 package infrastructure
 
 import (
-	"fmt"
 	"log"
 
-	"github.com/nedpals/supabase-go"
+	"github.com/supabase-community/gotrue-go"
+	"github.com/supabase-community/supabase-go"
 )
 
-var SupabaseClient *supabase.Client
+var (
+	SupabaseAuth   gotrue.Client
+	SupabaseClient *supabase.Client
+)
 
-// Initialize Supabase client
 func InitSupabase(url, key string) {
-	SupabaseClient = supabase.CreateClient(url, key) // Fixed constructor
-	log.Println("✅ Supabase client initialized.")
+	// Initialize authentication client
+	SupabaseAuth = gotrue.New(url, key)
+	if SupabaseAuth == nil {
+		log.Fatal("Failed to initialize Supabase authentication client")
+	}
+
+	// Initialize Supabase client (handling the error)
+	var err error
+	SupabaseClient, err = supabase.NewClient(url, key, nil)
+	if err != nil {
+		log.Fatalf("Failed to initialize Supabase client: %v", err)
+	}
 }
 
-// InsertPipeline inserts a pipeline into the "pipelines" table
-func InsertPipeline(pipelineName string) error {
-	type Pipeline struct {
-		Name string `json:"name"`
+// Get the Supabase client
+func GetSupabaseClient() *supabase.Client {
+	if SupabaseClient == nil {
+		log.Fatal("Supabase client is not initialized. Call InitSupabase first.")
 	}
-
-	newPipeline := Pipeline{Name: pipelineName}
-
-	var result []Pipeline
-
-	// Corrected Insert call to handle response and error properly
-	err := SupabaseClient.DB.From("pipelines").Insert(newPipeline).Execute(&result)
-	if err != nil {
-		return fmt.Errorf("❌ Failed to insert pipeline: %v", err)
-	}
-
-	log.Println("✅ Pipeline inserted successfully:", result)
-	return nil
-}
-
-// GetPipelines retrieves all pipelines from the "pipelines" table
-func GetPipelines() ([]map[string]interface{}, error) {
-	var pipelines []map[string]interface{}
-
-	// Select all columns without extra flags
-	err := SupabaseClient.DB.From("pipelines").Select("*").Execute(&pipelines)
-	if err != nil {
-		return nil, fmt.Errorf("❌ Failed to fetch pipelines: %v", err)
-	}
-
-	log.Printf("✅ Retrieved %d pipelines\n", len(pipelines))
-	return pipelines, nil
+	return SupabaseClient
 }
