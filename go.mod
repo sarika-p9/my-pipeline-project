@@ -4,16 +4,11 @@ go 1.23.3
 
 require (
 	github.com/gin-gonic/gin v1.10.0
-	github.com/golang-jwt/jwt/v4 v4.5.1
-	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.6.0
-	github.com/gorilla/mux v1.8.1
 	github.com/joho/godotenv v1.5.1
 	github.com/nats-io/nats.go v1.39.1
 	github.com/nedpals/supabase-go v0.5.0
 	github.com/streadway/amqp v1.1.0
-	github.com/stretchr/testify v1.10.0
-	github.com/supabase-community/gotrue-go v1.2.1
 	google.golang.org/grpc v1.70.0
 	google.golang.org/protobuf v1.35.2
 	gorm.io/driver/postgres v1.5.11

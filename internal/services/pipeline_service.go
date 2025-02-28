@@ -2,51 +2,151 @@ package services
 
 import (
 	"context"
+	"errors"
 	"log"
+	"sync"
+	"time"
 
-	"github.com/sarika-p9/my-pipeline-project/api/grpc/proto"
+	"github.com/google/uuid"
+	"github.com/sarika-p9/my-pipeline-project/internal/core/domain"
+	"github.com/sarika-p9/my-pipeline-project/internal/core/ports"
 	"github.com/sarika-p9/my-pipeline-project/internal/models"
-	"gorm.io/gorm"
 )
 
-// PipelineService implements the gRPC PipelineServiceServer interface
 type PipelineService struct {
-	proto.UnimplementedPipelineServiceServer
-	DB *gorm.DB
+	ParallelOrchestrators map[uuid.UUID]*domain.ParallelPipelineOrchestrator
+	Repository            ports.PipelineRepository
+	mu                    sync.RWMutex
 }
 
-// NewPipelineService initializes a new PipelineService
-func NewPipelineService(db *gorm.DB) *PipelineService {
-	return &PipelineService{DB: db}
+func NewPipelineService(repo ports.PipelineRepository) *PipelineService {
+	return &PipelineService{
+		ParallelOrchestrators: make(map[uuid.UUID]*domain.ParallelPipelineOrchestrator),
+		Repository:            repo,
+	}
 }
 
-// CreatePipeline handles pipeline creation
-func (s *PipelineService) CreatePipeline(ctx context.Context, req *proto.CreatePipelineRequest) (*proto.CreatePipelineResponse, error) {
-	pipeline := models.Pipeline{Name: req.Name}
+func (ps *PipelineService) CreatePipeline(userID uuid.UUID, stageCount int) (uuid.UUID, error) {
+	pipelineID := uuid.New()
 
-	if err := s.DB.Create(&pipeline).Error; err != nil {
-		log.Println("❌ Failed to create pipeline:", err)
-		return nil, err
+	ps.mu.Lock()
+	orchestrator := domain.NewParallelPipelineOrchestrator(pipelineID, ps.Repository)
+	ps.ParallelOrchestrators[pipelineID] = orchestrator
+	ps.mu.Unlock()
+
+	for i := 0; i < stageCount; i++ {
+		stage := domain.NewBaseStage()
+		log.Printf("Adding Stage: %s to Pipeline: %s", stage.GetID(), pipelineID) // Debugging log
+		if err := orchestrator.AddStage(stage); err != nil {
+			return uuid.Nil, err
+		}
 	}
 
-	log.Println("✅ Pipeline created:", pipeline)
-	return &proto.CreatePipelineResponse{Message: "Pipeline created successfully"}, nil
+	err := ps.Repository.SavePipelineExecution(&models.PipelineExecution{
+		PipelineID: pipelineID,
+		UserID:     userID,
+		Status:     "Created",
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
+	})
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	return pipelineID, nil
 }
 
-// ListPipelines retrieves all pipelines
-func (s *PipelineService) ListPipelines(ctx context.Context, req *proto.ListPipelinesRequest) (*proto.ListPipelinesResponse, error) {
-	var pipelines []models.Pipeline
-	if err := s.DB.Find(&pipelines).Error; err != nil {
-		log.Println("❌ Failed to fetch pipelines:", err)
-		return nil, err
+// ✅ Start pipeline execution based on pipeline ID
+func (ps *PipelineService) StartPipeline(ctx context.Context, userID uuid.UUID, pipelineID uuid.UUID, input interface{}) error {
+	ps.mu.RLock()
+	orchestrator, exists := ps.ParallelOrchestrators[pipelineID]
+	ps.mu.RUnlock()
+
+	if !exists {
+		return errors.New("orchestrator not initialized for this pipeline")
 	}
 
-	// ✅ Fix: Correctly initialize proto.Pipeline instances
-	var protoPipelines []*proto.Pipeline
-	for _, p := range pipelines {
-		protoPipelines = append(protoPipelines, &proto.Pipeline{Name: p.Name}) // ✅ No more "undefined: proto.Pipeline"
+	status, err := ps.Repository.GetPipelineStatus(pipelineID.String())
+	if err != nil {
+		log.Printf("Failed to get pipeline status: %v", err)
+		return err
+	}
+	if status != "Created" && status != "Paused" {
+		return errors.New("invalid pipeline status: " + status)
 	}
 
-	log.Printf("✅ Retrieved %d pipelines\n", len(pipelines))
-	return &proto.ListPipelinesResponse{Pipelines: protoPipelines}, nil
+	// 🚀 Ensure stages are present before execution
+	if len(orchestrator.Stages) == 0 {
+		return errors.New("no stages found for this pipeline execution")
+	}
+
+	if err := ps.updatePipelineStatus(pipelineID, "Running"); err != nil {
+		return err
+	}
+
+	stageID, _, err := orchestrator.Execute(ctx, userID, pipelineID, input)
+	if err != nil {
+		_ = ps.updatePipelineStatus(pipelineID, "Failed")
+		ps.logExecutionError(pipelineID, stageID, err.Error())
+		return err
+	}
+
+	return ps.updatePipelineStatus(pipelineID, "Completed")
+}
+
+// ✅ Retrieve pipeline status
+func (ps *PipelineService) GetPipelineStatus(pipelineID uuid.UUID) (string, error) {
+	ps.mu.RLock()
+	orchestrator, exists := ps.ParallelOrchestrators[pipelineID]
+	ps.mu.RUnlock()
+
+	if !exists {
+		return "", errors.New("orchestrator not found for pipeline")
+	}
+
+	return orchestrator.GetStatus(pipelineID)
+}
+
+// ✅ Cancel pipeline execution
+func (ps *PipelineService) CancelPipeline(pipelineID uuid.UUID, userID uuid.UUID) error {
+	ps.mu.RLock()
+	orchestrator, exists := ps.ParallelOrchestrators[pipelineID]
+	ps.mu.RUnlock()
+
+	if !exists {
+		log.Printf("Orchestrator not found for pipeline: %s", pipelineID)
+		return errors.New("orchestrator not initialized for this pipeline")
+	}
+
+	log.Printf("Cancelling pipeline: %s by user: %s", pipelineID, userID)
+
+	err := orchestrator.Cancel(pipelineID, userID)
+	if err != nil {
+		log.Printf("Failed to cancel pipeline: %v", err)
+		_ = ps.updatePipelineStatus(pipelineID, "Failed to Cancel")
+		return err
+	}
+
+	return ps.updatePipelineStatus(pipelineID, "Cancelled")
+}
+
+func (ps *PipelineService) updatePipelineStatus(pipelineID uuid.UUID, status string) error {
+	return ps.Repository.UpdatePipelineExecution(&models.PipelineExecution{
+		PipelineID: pipelineID,
+		Status:     status,
+		UpdatedAt:  time.Now(),
+	})
+}
+
+func (ps *PipelineService) logExecutionError(pipelineID uuid.UUID, stageID uuid.UUID, errorMsg string) {
+	logErr := ps.Repository.SaveExecutionLog(&models.ExecutionLog{
+		StageID:    stageID,
+		PipelineID: pipelineID,
+		Status:     "Error",
+		ErrorMsg:   errorMsg,
+		Timestamp:  time.Now(),
+	})
+	if logErr != nil {
+		log.Printf("Failed to log execution error: %v", logErr)
+	}
 }

@@ -4,7 +4,7 @@
 // - protoc             v5.29.3
 // source: pipeline.proto
 
-package proto
+package pipeline
 
 import (
 	context "context"
@@ -19,16 +19,22 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	PipelineService_CreatePipeline_FullMethodName = "/proto.PipelineService/CreatePipeline"
-	PipelineService_ListPipelines_FullMethodName  = "/proto.PipelineService/ListPipelines"
+	PipelineService_CreatePipeline_FullMethodName    = "/proto.PipelineService/CreatePipeline"
+	PipelineService_StartPipeline_FullMethodName     = "/proto.PipelineService/StartPipeline"
+	PipelineService_GetPipelineStatus_FullMethodName = "/proto.PipelineService/GetPipelineStatus"
+	PipelineService_CancelPipeline_FullMethodName    = "/proto.PipelineService/CancelPipeline"
 )
 
 // PipelineServiceClient is the client API for PipelineService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// Service Definition
 type PipelineServiceClient interface {
 	CreatePipeline(ctx context.Context, in *CreatePipelineRequest, opts ...grpc.CallOption) (*CreatePipelineResponse, error)
-	ListPipelines(ctx context.Context, in *ListPipelinesRequest, opts ...grpc.CallOption) (*ListPipelinesResponse, error)
+	StartPipeline(ctx context.Context, in *StartPipelineRequest, opts ...grpc.CallOption) (*StartPipelineResponse, error)
+	GetPipelineStatus(ctx context.Context, in *GetPipelineStatusRequest, opts ...grpc.CallOption) (*GetPipelineStatusResponse, error)
+	CancelPipeline(ctx context.Context, in *CancelPipelineRequest, opts ...grpc.CallOption) (*CancelPipelineResponse, error)
 }
 
 type pipelineServiceClient struct {
@@ -49,10 +55,30 @@ func (c *pipelineServiceClient) CreatePipeline(ctx context.Context, in *CreatePi
 	return out, nil
 }
 
-func (c *pipelineServiceClient) ListPipelines(ctx context.Context, in *ListPipelinesRequest, opts ...grpc.CallOption) (*ListPipelinesResponse, error) {
+func (c *pipelineServiceClient) StartPipeline(ctx context.Context, in *StartPipelineRequest, opts ...grpc.CallOption) (*StartPipelineResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ListPipelinesResponse)
-	err := c.cc.Invoke(ctx, PipelineService_ListPipelines_FullMethodName, in, out, cOpts...)
+	out := new(StartPipelineResponse)
+	err := c.cc.Invoke(ctx, PipelineService_StartPipeline_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *pipelineServiceClient) GetPipelineStatus(ctx context.Context, in *GetPipelineStatusRequest, opts ...grpc.CallOption) (*GetPipelineStatusResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetPipelineStatusResponse)
+	err := c.cc.Invoke(ctx, PipelineService_GetPipelineStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *pipelineServiceClient) CancelPipeline(ctx context.Context, in *CancelPipelineRequest, opts ...grpc.CallOption) (*CancelPipelineResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CancelPipelineResponse)
+	err := c.cc.Invoke(ctx, PipelineService_CancelPipeline_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -62,9 +88,13 @@ func (c *pipelineServiceClient) ListPipelines(ctx context.Context, in *ListPipel
 // PipelineServiceServer is the server API for PipelineService service.
 // All implementations must embed UnimplementedPipelineServiceServer
 // for forward compatibility.
+//
+// Service Definition
 type PipelineServiceServer interface {
 	CreatePipeline(context.Context, *CreatePipelineRequest) (*CreatePipelineResponse, error)
-	ListPipelines(context.Context, *ListPipelinesRequest) (*ListPipelinesResponse, error)
+	StartPipeline(context.Context, *StartPipelineRequest) (*StartPipelineResponse, error)
+	GetPipelineStatus(context.Context, *GetPipelineStatusRequest) (*GetPipelineStatusResponse, error)
+	CancelPipeline(context.Context, *CancelPipelineRequest) (*CancelPipelineResponse, error)
 	mustEmbedUnimplementedPipelineServiceServer()
 }
 
@@ -78,8 +108,14 @@ type UnimplementedPipelineServiceServer struct{}
 func (UnimplementedPipelineServiceServer) CreatePipeline(context.Context, *CreatePipelineRequest) (*CreatePipelineResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreatePipeline not implemented")
 }
-func (UnimplementedPipelineServiceServer) ListPipelines(context.Context, *ListPipelinesRequest) (*ListPipelinesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListPipelines not implemented")
+func (UnimplementedPipelineServiceServer) StartPipeline(context.Context, *StartPipelineRequest) (*StartPipelineResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method StartPipeline not implemented")
+}
+func (UnimplementedPipelineServiceServer) GetPipelineStatus(context.Context, *GetPipelineStatusRequest) (*GetPipelineStatusResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetPipelineStatus not implemented")
+}
+func (UnimplementedPipelineServiceServer) CancelPipeline(context.Context, *CancelPipelineRequest) (*CancelPipelineResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CancelPipeline not implemented")
 }
 func (UnimplementedPipelineServiceServer) mustEmbedUnimplementedPipelineServiceServer() {}
 func (UnimplementedPipelineServiceServer) testEmbeddedByValue()                         {}
@@ -120,20 +156,56 @@ func _PipelineService_CreatePipeline_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
-func _PipelineService_ListPipelines_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListPipelinesRequest)
+func _PipelineService_StartPipeline_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StartPipelineRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(PipelineServiceServer).ListPipelines(ctx, in)
+		return srv.(PipelineServiceServer).StartPipeline(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: PipelineService_ListPipelines_FullMethodName,
+		FullMethod: PipelineService_StartPipeline_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(PipelineServiceServer).ListPipelines(ctx, req.(*ListPipelinesRequest))
+		return srv.(PipelineServiceServer).StartPipeline(ctx, req.(*StartPipelineRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PipelineService_GetPipelineStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPipelineStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PipelineServiceServer).GetPipelineStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PipelineService_GetPipelineStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PipelineServiceServer).GetPipelineStatus(ctx, req.(*GetPipelineStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PipelineService_CancelPipeline_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CancelPipelineRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PipelineServiceServer).CancelPipeline(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PipelineService_CancelPipeline_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PipelineServiceServer).CancelPipeline(ctx, req.(*CancelPipelineRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -150,8 +222,16 @@ var PipelineService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _PipelineService_CreatePipeline_Handler,
 		},
 		{
-			MethodName: "ListPipelines",
-			Handler:    _PipelineService_ListPipelines_Handler,
+			MethodName: "StartPipeline",
+			Handler:    _PipelineService_StartPipeline_Handler,
+		},
+		{
+			MethodName: "GetPipelineStatus",
+			Handler:    _PipelineService_GetPipelineStatus_Handler,
+		},
+		{
+			MethodName: "CancelPipeline",
+			Handler:    _PipelineService_CancelPipeline_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -5,12 +5,11 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/sarika-p9/my-pipeline-project/internal/infrastructure"
-	"github.com/sarika-p9/my-pipeline-project/internal/models"
-	"github.com/sarika-p9/my-pipeline-project/internal/ports"
-
 	"github.com/google/uuid"
 	"github.com/nedpals/supabase-go"
+	"github.com/sarika-p9/my-pipeline-project/internal/core/ports"
+	"github.com/sarika-p9/my-pipeline-project/internal/infrastructure"
+	"github.com/sarika-p9/my-pipeline-project/internal/models"
 )
 
 // AuthService handles user authentication
@@ -22,12 +21,66 @@ type AuthService struct {
 // NewAuthService initializes the AuthService
 func NewAuthService(repo ports.PipelineRepository) *AuthService {
 	return &AuthService{
-		SupabaseClient: infrastructure.InitSupabaseClient(), // Use the initialized Supabase client
+		SupabaseClient: infrastructure.InitSupabaseClient(),
 		Repo:           repo,
 	}
 }
 
-// RegisterUser registers a new user and waits for email confirmation
+// // RegisterUser registers a new user and saves their details in the database
+// func (s *AuthService) RegisterUser(email, password string) (string, string, string, error) {
+// 	user, err := s.SupabaseClient.Auth.SignUp(context.Background(), supabase.UserCredentials{
+// 		Email:    email,
+// 		Password: password,
+// 	})
+// 	if err != nil {
+// 		return "", "", "", errors.New("registration failed: " + err.Error())
+// 	}
+
+// 	if user == nil {
+// 		return "", "", "", errors.New("unexpected response from Supabase: user is nil")
+// 	}
+
+// 	// Since SignUp does NOT return a session, manually log in to get a session token
+// 	session, err := s.SupabaseClient.Auth.SignIn(context.Background(), supabase.UserCredentials{
+// 		Email:    email,
+// 		Password: password,
+// 	})
+// 	if err != nil {
+// 		return "", "", "", errors.New("login after registration failed: " + err.Error())
+// 	}
+
+// 	// Save user details in the database
+// 	newUser := &models.User{
+// 		UserID: uuid.MustParse(user.ID),
+// 		Email:  user.Email,
+// 		Name:   "Harsh Srivastava", // Name should be updated from the UI later
+// 		Role:   "admin", // Default role
+// 	}
+
+// 	if err := s.Repo.SaveUser(newUser); err != nil {
+// 		return "", "", "", errors.New("failed to save user in the database: " + err.Error())
+// 	}
+
+// 	return user.ID, user.Email, session.AccessToken, nil
+// }
+
+// // LoginUser authenticates a user and returns ID, email, and token
+// func (s *AuthService) LoginUser(email, password string) (string, string, string, error) {
+// 	session, err := s.SupabaseClient.Auth.SignIn(context.Background(), supabase.UserCredentials{
+// 		Email:    email,
+// 		Password: password,
+// 	})
+// 	if err != nil {
+// 		return "", "", "", errors.New("login failed: " + err.Error())
+// 	}
+
+// 	if session.User.ID == "" || session.User.Email == "" || session.AccessToken == "" {
+// 		return "", "", "", errors.New("unexpected response from Supabase: session or user is nil")
+// 	}
+
+// 	return session.User.ID, session.User.Email, session.AccessToken, nil
+// }
+
 func (s *AuthService) RegisterUser(email, password string) (string, string, string, error) {
 	user, err := s.SupabaseClient.Auth.SignUp(context.Background(), supabase.UserCredentials{
 		Email:    email,
@@ -47,7 +100,6 @@ func (s *AuthService) RegisterUser(email, password string) (string, string, stri
 	return user.ID, user.Email, "", nil // Don't return token yet
 }
 
-// LoginUser authenticates a user, ensures they exist in DB, and returns ID, email, and token
 func (s *AuthService) LoginUser(email, password string) (string, string, string, error) {
 	session, err := s.SupabaseClient.Auth.SignIn(context.Background(), supabase.UserCredentials{
 		Email:    email,
@@ -74,6 +126,8 @@ func (s *AuthService) LoginUser(email, password string) (string, string, string,
 		newUser := &models.User{
 			UserID: userUUID,
 			Email:  session.User.Email,
+			// Name:   "Harsh Srivastava",
+			// Role:   "admin",
 		}
 		if err := s.Repo.SaveUser(newUser); err != nil {
 			return "", "", "", errors.New("failed to save user in the database: " + err.Error())

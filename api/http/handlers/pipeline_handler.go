@@ -1,54 +1,123 @@
 package handlers
 
 import (
+	"context"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sarika-p9/my-pipeline-project/internal/models"
-	"gorm.io/gorm"
+	"github.com/google/uuid"
+	"github.com/sarika-p9/my-pipeline-project/internal/services"
 )
 
 type PipelineHandler struct {
-	DB *gorm.DB
+	Service *services.PipelineService
 }
 
-func NewPipelineHandler(db *gorm.DB) *PipelineHandler {
-	return &PipelineHandler{DB: db}
+type CreatePipelineRequest struct {
+	Stages int       `json:"stages"`
+	UserID uuid.UUID `json:"user_id"` // Extracted from the request
 }
 
+// CreatePipeline handles pipeline creation
 func (h *PipelineHandler) CreatePipeline(c *gin.Context) {
-	var req struct {
-		Name string `json:"name"`
-	}
-
+	var req CreatePipelineRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
 	}
 
-	pipeline := models.Pipeline{Name: req.Name}
-	if err := h.DB.Create(&pipeline).Error; err != nil {
+	if req.UserID == uuid.Nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "User ID is required"})
+		return
+	}
+
+	pipelineID, err := h.Service.CreatePipeline(req.UserID, req.Stages)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create pipeline"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Pipeline created successfully", "pipeline": pipeline})
+	c.JSON(http.StatusAccepted, gin.H{"message": "Pipeline created", "pipeline_id": pipelineID})
 }
 
-func (h *PipelineHandler) ListPipelines(c *gin.Context) {
-	var pipelines []models.Pipeline
-	if err := h.DB.Find(&pipelines).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch pipelines"})
+type StartPipelineRequest struct {
+	Input  interface{} `json:"input"`
+	UserID uuid.UUID   `json:"user_id"`
+}
+
+// StartPipeline handles pipeline execution
+func (h *PipelineHandler) StartPipeline(c *gin.Context) {
+	pipelineID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid pipeline ID"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"pipelines": pipelines})
+	var req StartPipelineRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	if req.UserID == uuid.Nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "User ID is required"})
+		return
+	}
+
+	go func() {
+		h.Service.StartPipeline(context.Background(), req.UserID, pipelineID, req.Input)
+	}()
+
+	c.JSON(http.StatusAccepted, gin.H{"message": "Pipeline execution started", "pipeline_id": pipelineID})
 }
 
-func GetAPIStatus(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"status": "API is running"})
+// GetPipelineStatus retrieves the current status of a pipeline
+func (h *PipelineHandler) GetPipelineStatus(c *gin.Context) {
+	pipelineID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid pipeline ID"})
+		return
+	}
+
+	status, err := h.Service.GetPipelineStatus(pipelineID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Pipeline not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"pipeline_id": pipelineID, "status": status})
 }
 
-func ListWorkers(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"workers": []string{}}) // Update logic later if needed
+type CancelPipelineRequest struct {
+	UserID uuid.UUID `json:"user_id"`
+}
+
+// CancelPipeline cancels an ongoing pipeline execution
+func (h *PipelineHandler) CancelPipeline(c *gin.Context) {
+	pipelineID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid pipeline ID"})
+		return
+	}
+
+	var req CancelPipelineRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	if req.UserID == uuid.Nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "User ID is required"})
+		return
+	}
+
+	err = h.Service.CancelPipeline(pipelineID, req.UserID)
+	if err != nil {
+		log.Printf("Error cancelling pipeline: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to cancel pipeline"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Pipeline cancelled", "pipeline_id": pipelineID})
 }

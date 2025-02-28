@@ -5,7 +5,6 @@ import (
 	"github.com/sarika-p9/my-pipeline-project/internal/models"
 )
 
-// PipelineRepository defines the interface for database operations
 type PipelineRepository interface {
 	SavePipelineExecution(execution *models.PipelineExecution) error
 	UpdatePipelineExecution(execution *models.PipelineExecution) error
