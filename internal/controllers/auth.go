@@ -1,36 +1,38 @@
 package controllers
 
 import (
-	"log"
+	"encoding/json"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
-	"github.com/sarika-p9/my-pipeline-project/internal/services"
+	"github.com/sarika-p9/my-pipeline-project/internal/infrastructure" // Update with your actual module name
+	"github.com/supabase-community/gotrue-go"
 )
 
-// Register handles user registration via Supabase and stores the user in the database.
-func Register(c *gin.Context) {
-	var req struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
+type SignUpRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
 
-	if err := c.BindJSON(&req); err != nil {
-		log.Println("❌ Invalid request data:", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
+func SignUpHandler(w http.ResponseWriter, r *http.Request) {
+	var req SignUpRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
 	}
 
-	log.Println("🔹 Registering user:", req.Email)
-
-	// Register the user in Supabase and store them in the database
-	userID, err := services.RegisterUser(req.Email, req.Password)
+	user, err := infrastructure.SupabaseAuth.Signup(r.Context(), gotrue.SignupRequest{
+		Email:    req.Email,
+		Password: req.Password,
+	})
 	if err != nil {
-		log.Println("❌ Failed to create user:", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
+		http.Error(w, "Failed to sign up user: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	log.Println("✅ User registered successfully:", req.Email, "with Supabase ID:", userID)
-	c.JSON(http.StatusCreated, gin.H{"message": "User registered. Please verify your email."})
+	response := map[string]interface{}{
+		"message": "User registered successfully. Please check your email for verification.",
+		"user":    user,
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }

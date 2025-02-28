@@ -12,15 +12,17 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/nats-io/nats.go"
+	"github.com/streadway/amqp"
+	"github.com/supabase-community/gotrue-go"
+	"google.golang.org/grpc"
+
 	"github.com/sarika-p9/my-pipeline-project/api/grpc/proto"
-	"github.com/sarika-p9/my-pipeline-project/api/http/handlers"
+	"github.com/sarika-p9/my-pipeline-project/internal/adapter/secondary"
 	"github.com/sarika-p9/my-pipeline-project/internal/grpcserver"
 	"github.com/sarika-p9/my-pipeline-project/internal/infrastructure"
 	"github.com/sarika-p9/my-pipeline-project/internal/messaging"
 	"github.com/sarika-p9/my-pipeline-project/internal/middleware"
 	"github.com/sarika-p9/my-pipeline-project/internal/services"
-	"github.com/streadway/amqp"
-	"google.golang.org/grpc"
 )
 
 var (
@@ -29,6 +31,7 @@ var (
 	rabbitMQConn    *amqp.Connection
 	rabbitMQChannel *amqp.Channel
 	natsConn        *nats.Conn
+	supabaseAuth    *gotrue.Client
 )
 
 // Initialize gRPC connection
@@ -47,103 +50,106 @@ func closeGRPC() {
 	}
 }
 
-// Initialize RabbitMQ
-func initRabbitMQ() {
-	var err error
-	rabbitURL := "amqp://guest:guest@localhost:5672/"
-	rabbitMQConn, rabbitMQChannel, err = messaging.ConnectRabbitMQ(rabbitURL)
-	if err != nil {
-		log.Fatalf("Failed to connect to RabbitMQ: %v", err)
-	}
-}
-
-func closeRabbitMQ() {
-	if rabbitMQChannel != nil {
-		rabbitMQChannel.Close()
-	}
-	if rabbitMQConn != nil {
-		rabbitMQConn.Close()
-	}
-}
-
-// Initialize NATS
-func initNATS() {
-	natsURL := os.Getenv("NATS_URL")
-	if natsURL == "" {
-		natsURL = "nats://localhost:4222"
-	}
-	natsConn = infrastructure.ConnectNATS(natsURL)
-}
-
-func closeNATS() {
-	if natsConn != nil {
-		natsConn.Close()
-	}
-}
-
 func main() {
 	// Load environment variables
 	if err := godotenv.Load(); err != nil {
-		log.Fatal("Error loading .env file")
+		log.Println("Warning: No .env file found. Proceeding with existing environment variables.")
 	}
 
 	supabaseURL := os.Getenv("SUPABASE_URL")
 	supabaseKey := os.Getenv("SUPABASE_KEY")
-	if supabaseURL == "" || supabaseKey == "" {
-		log.Fatal("SUPABASE_URL and SUPABASE_KEY must be set in the .env file")
+	postgresDSN := os.Getenv("POSTGRES_DSN") // Ensure this is set in the environment
+
+	if supabaseURL == "" || supabaseKey == "" || postgresDSN == "" {
+		log.Fatal("SUPABASE_URL, SUPABASE_KEY, and POSTGRES_DSN must be set in the environment variables")
 	}
 
-	// Initialize database connection
-	infrastructure.InitDatabase()
-	db := infrastructure.GetDatabaseInstance()
+	// ✅ Initialize Supabase Client for Authentication
+	infrastructure.InitSupabaseAuth(supabaseURL, supabaseKey)
+	supabaseAuth = infrastructure.GetSupabaseAuth()
+
+	// ✅ Initialize Database
+	infrastructure.InitDatabase(postgresDSN)
+	db := infrastructure.GetDB()
 
 	initGRPC()
 	defer closeGRPC()
 
-	initRabbitMQ()
-	defer closeRabbitMQ()
+	// ✅ Initialize database repository
+	dbRepo := secondary.NewDatabaseAdapter(db)
 
-	initNATS()
-	defer closeNATS()
+	// ✅ Initialize authentication service
+	authService := services.NewAuthService(dbRepo)
+
+	// ✅ Initialize pipeline service
+	pipelineService := services.NewPipelineService(dbRepo)
+
+	// ✅ Initialize RabbitMQ
+	go func() {
+		rabbitURL := "amqp://guest:guest@localhost:5672/"
+		var err error
+		rabbitMQConn, rabbitMQChannel, err = messaging.ConnectRabbitMQ(rabbitURL)
+		if err != nil {
+			log.Fatalf("Failed to connect to RabbitMQ: %v", err)
+		}
+		defer func() {
+			if rabbitMQChannel != nil {
+				rabbitMQChannel.Close()
+			}
+			if rabbitMQConn != nil {
+				rabbitMQConn.Close()
+			}
+		}()
+	}()
+
+	// ✅ Initialize NATS
+	go func() {
+		natsURL := "nats://localhost:4222"
+		natsConn = infrastructure.ConnectNATS(natsURL)
+		defer func() {
+			if natsConn != nil {
+				natsConn.Close()
+			}
+		}()
+	}()
 
 	services.SubscribeToEvents(natsConn, "pipeline.updates")
 
 	go grpcserver.StartGRPCServer()
 
-	r := gin.New()
-	r.Use(gin.Logger(), gin.Recovery())
+	r := gin.Default()
 
-	// Initialize handlers with DB instance
-	authHandler := handlers.AuthHandler{DB: db}
-	pipelineHandler := handlers.NewPipelineHandler(db)
+	// ✅ Initialize REST API handlers
+	authHandler := services.NewAuthHandler(authService)
+	pipelineHandler := services.NewPipelineHandler(pipelineService)
 
-	// Public routes
-	r.POST("/register", authHandler.SignupHandler)
+	// ✅ Public routes
+	r.POST("/register", authHandler.RegisterHandler)
 	r.POST("/login", authHandler.LoginHandler)
 
-	// Protected routes
+	// ✅ Protected routes
 	authorized := r.Group("/")
 	authorized.Use(middleware.AuthMiddleware())
 	authorized.POST("/pipelines", pipelineHandler.CreatePipeline)
 	authorized.GET("/pipelines", pipelineHandler.ListPipelines)
 
-	// API status and worker management
-	r.GET("/status", handlers.GetAPIStatus)
-	r.GET("/workers", handlers.ListWorkers)
+	// ✅ API status and worker management
+	r.GET("/status", services.GetAPIStatus)
+	r.GET("/workers", services.ListWorkers)
 
 	srv := &http.Server{
 		Addr:    ":8080",
 		Handler: r,
 	}
 
-	// Start server in a separate goroutine
+	// ✅ Start server in a separate goroutine
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Could not run API server: %v", err)
 		}
 	}()
 
-	// Graceful shutdown
+	// ✅ Graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 	<-quit

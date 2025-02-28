@@ -3,30 +3,34 @@ package models
 import (
 	"time"
 
-	"gorm.io/gorm"
+	"github.com/google/uuid"
 )
 
 type User struct {
-	ID        string    `gorm:"primaryKey" json:"id"` // Supabase User ID
-	Email     string    `gorm:"unique;not null" json:"email"`
-	Verified  bool      `gorm:"default:false" json:"verified"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	UserID    uuid.UUID `gorm:"column:user_id;type:uuid;primaryKey"`
+	Name      string    `gorm:"type:varchar(100)"`
+	Email     string    `gorm:"type:varchar(100);unique;not null"`
+	Role      string    `gorm:"type:varchar(20);not null;default:'worker';check:role IN ('super_admin', 'admin', 'manager', 'worker')"`
+	CreatedAt time.Time `gorm:"autoCreateTime"`
+	UpdatedAt time.Time `gorm:"autoUpdateTime"`
+
+	PipelineExecutions []PipelineExecution `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE;"`
 }
 
-func GetUserByEmail(db *gorm.DB, email string) (*User, error) {
-	var user User
-	result := db.Where("email = ?", email).First(&user)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-	return &user, nil
+type PipelineExecution struct {
+	PipelineID uuid.UUID `gorm:"type:uuid;default:uuid_generate_v4();primaryKey"`
+	UserID     uuid.UUID `gorm:"type:uuid;not null;index"`
+	Status     string    `gorm:"type:varchar(50);not null"`
+	CreatedAt  time.Time `gorm:"autoCreateTime"`
+	UpdatedAt  time.Time `gorm:"autoUpdateTime"`
+
+	ExecutionLogs []ExecutionLog `gorm:"foreignKey:PipelineID;constraint:OnDelete:CASCADE;"`
 }
 
-func CreateUser(db *gorm.DB, user *User) error {
-	return db.Create(user).Error
-}
-
-func VerifyUser(db *gorm.DB, token string) error {
-	return db.Model(&User{}).Where("verification_token = ?", token).Update("verified", true).Error
+type ExecutionLog struct {
+	StageID    uuid.UUID `gorm:"type:uuid;primaryKey"`
+	PipelineID uuid.UUID `gorm:"type:uuid;not null;index"`
+	Status     string    `gorm:"type:varchar(50);not null"`
+	ErrorMsg   string    `gorm:"type:text"`
+	Timestamp  time.Time `gorm:"autoCreateTime"`
 }

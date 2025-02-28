@@ -1,49 +1,25 @@
 package infrastructure
 
 import (
-	"log"
-	"os"
+	"fmt"
 
-	"github.com/sarika-p9/my-pipeline-project/internal/types"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
+	"github.com/sarika-p9/my-pipeline-project/internal/models"
 )
 
-var db *gorm.DB
-
-// InitDatabase sets up the database connection using environment variables
-func InitDatabase() {
-	dsn := os.Getenv("DATABASE_URL")
-	if dsn == "" {
-		log.Fatal("❌ DATABASE_URL is not set in environment variables")
-	}
-
-	var err error
-	db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
-	if err != nil {
-		log.Fatalf("❌ Failed to connect to database: %v", err)
-	}
-	log.Println("✅ Database connected")
-
-	// Auto-migrate all necessary tables
-	err = db.AutoMigrate(
-		&types.User{}, // Add other models if needed
-	)
-	if err != nil {
-		log.Fatalf("❌ AutoMigrate failed: %v", err)
-	}
-}
-
-// GetDatabaseInstance returns the initialized database connection
-func GetDatabaseInstance() *gorm.DB {
+// StoreUserInDB stores a user in PostgreSQL
+func StoreUserInDB(user *models.User) error {
+	db := GetDB()
 	if db == nil {
-		log.Fatal("❌ Database instance is not initialized. Call InitDatabase first.")
+		return fmt.Errorf("database not initialized")
 	}
-	return db
+	return db.Create(user).Error
 }
 
-// InsertUserIntoDB inserts a user into the database
-func InsertUserIntoDB(user types.User) error {
-	db := GetDatabaseInstance()
-	return db.Create(&user).Error
+// UpdateUserInDB updates user details
+func UpdateUserInDB(user *models.User) error {
+	db := GetDB()
+	if db == nil {
+		return fmt.Errorf("database not initialized")
+	}
+	return db.Save(user).Error
 }

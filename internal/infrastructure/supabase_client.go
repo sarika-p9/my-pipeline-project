@@ -2,35 +2,21 @@ package infrastructure
 
 import (
 	"log"
+	"os"
 
-	"github.com/supabase-community/gotrue-go"
-	"github.com/supabase-community/supabase-go"
+	"github.com/joho/godotenv"
+	"github.com/nedpals/supabase-go"
 )
 
-var (
-	SupabaseAuth   gotrue.Client
-	SupabaseClient *supabase.Client
-)
-
-func InitSupabase(url, key string) {
-	// Initialize authentication client
-	SupabaseAuth = gotrue.New(url, key)
-	if SupabaseAuth == nil {
-		log.Fatal("Failed to initialize Supabase authentication client")
-	}
-
-	// Initialize Supabase client (handling the error)
-	var err error
-	SupabaseClient, err = supabase.NewClient(url, key, nil)
+// InitSupabaseClient initializes and returns a Supabase client
+func InitSupabaseClient() *supabase.Client {
+	err := godotenv.Load()
 	if err != nil {
-		log.Fatalf("Failed to initialize Supabase client: %v", err)
+		log.Fatalf("Error loading .env file: %v", err)
 	}
-}
 
-// Get the Supabase client
-func GetSupabaseClient() *supabase.Client {
-	if SupabaseClient == nil {
-		log.Fatal("Supabase client is not initialized. Call InitSupabase first.")
-	}
-	return SupabaseClient
+	url := os.Getenv("SUPABASE_URL")
+	key := os.Getenv("SUPABASE_KEY")
+
+	return supabase.CreateClient(url, key)
 }
