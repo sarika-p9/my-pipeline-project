@@ -39,6 +39,13 @@ func InitDatabase() {
 	}
 	log.Println("UUID-OSSP extension enabled.")
 
+	// **Perform Database Migrations in Order**
+	migrateDatabase()
+}
+
+func migrateDatabase() {
+	log.Println("Starting database migration...")
+
 	// **Migrate User table first**
 	if err := DB.AutoMigrate(&models.User{}); err != nil {
 		log.Fatalf("Failed to migrate User table: %v", err)
@@ -57,7 +64,7 @@ func InitDatabase() {
 	log.Println("Database migration completed successfully.")
 }
 
-// ✅ Add this function to return the initialized DB instance
+// ✅ Function to return DB instance
 func GetDB() *gorm.DB {
 	if DB == nil {
 		log.Fatal("Database is not initialized. Call InitDatabase() first.")
