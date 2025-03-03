@@ -1,59 +1,34 @@
 import React, { useState } from "react";
+import { TextField, Button, Typography, Container, Box, Link } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-import { registerUser } from "../services/api"; // Import API function
-import { Button, TextField, Typography, Container, Box, Alert } from "@mui/material";
+import axios from "axios";
 
 const Register = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  const handleRegister = async (e) => {
-    e.preventDefault();
+  const handleRegister = async () => {
     setMessage("");
-    setError("");
-
-    const result = await registerUser(email, password);
-    if (result.error) {
-      setError(result.error);
-    } else {
-      setMessage("Registration successful! Check your email to verify.");
-      setTimeout(() => navigate("/login"), 2000); // Redirect after 2s
+    try {
+      const response = await axios.post("http://localhost:8080/register", { email, password });
+      setMessage("Check your email and confirm authentication.");
+    } catch (error) {
+      setMessage("Registration failed. Please try again.");
     }
   };
 
   return (
     <Container maxWidth="sm">
-      <Box sx={{ mt: 5, p: 4, boxShadow: 3, borderRadius: 2, bgcolor: "white" }}>
-        <Typography variant="h4" textAlign="center" mb={2}>Register</Typography>
-        {message && <Alert severity="success">{message}</Alert>}
-        {error && <Alert severity="error">{error}</Alert>}
-        <form onSubmit={handleRegister}>
-          <TextField
-            label="Email"
-            fullWidth
-            margin="normal"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          <TextField
-            label="Password"
-            type="password"
-            fullWidth
-            margin="normal"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-          <Button type="submit" variant="contained" color="primary" fullWidth sx={{ mt: 2 }}>
-            Register
-          </Button>
-        </form>
-        <Typography textAlign="center" mt={2}>
-          Already registered? <Button onClick={() => navigate("/login")}>Login</Button>
+      <Box sx={{ textAlign: "center", mt: 5, p: 3, boxShadow: 3, borderRadius: 2 }}>
+        <Typography variant="h4" gutterBottom>Register</Typography>
+        <TextField label="Email" fullWidth margin="normal" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <TextField label="Password" type="password" fullWidth margin="normal" value={password} onChange={(e) => setPassword(e.target.value)} />
+        <Button variant="contained" color="primary" fullWidth onClick={handleRegister} sx={{ mt: 2 }}>Register</Button>
+        {message && <Typography sx={{ mt: 2, color: "green" }}>{message}</Typography>}
+        <Typography sx={{ mt: 2 }}>
+          Already have an account? <Link onClick={() => navigate("/login")} sx={{ cursor: "pointer" }}>Login here</Link>
         </Typography>
       </Box>
     </Container>

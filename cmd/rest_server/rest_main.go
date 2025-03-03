@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/nats-io/nats.go"
@@ -49,6 +50,15 @@ func main() {
 
 	// Setup Gin router
 	r := gin.Default()
+
+	// Enable CORS for frontend integration
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*"}, // Allows requests from any origin (including Postman Web & React)
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		AllowCredentials: true,
+	}))
+
 	r.POST("/register", gin.WrapF(authHandler.RegisterHandler))
 	r.POST("/login", gin.WrapF(authHandler.LoginHandler))
 	r.POST("/pipelines", handler.CreatePipeline)
@@ -111,8 +121,6 @@ func main() {
 	<-quit
 
 	log.Println("Shutting down servers...")
-
 	grpcServer.GracefulStop()
-
 	log.Println("Servers exited gracefully")
 }

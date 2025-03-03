@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 
 	"github.com/google/uuid"
 	"github.com/nedpals/supabase-go"
@@ -12,13 +13,11 @@ import (
 	"github.com/sarika-p9/my-pipeline-project/internal/models"
 )
 
-// AuthService handles user authentication
 type AuthService struct {
 	SupabaseClient *supabase.Client
 	Repo           ports.PipelineRepository
 }
 
-// NewAuthService initializes the AuthService
 func NewAuthService(repo ports.PipelineRepository) *AuthService {
 	return &AuthService{
 		SupabaseClient: infrastructure.InitSupabaseClient(),
@@ -27,18 +26,24 @@ func NewAuthService(repo ports.PipelineRepository) *AuthService {
 }
 
 func (s *AuthService) RegisterUser(email, password string) (string, string, string, error) {
+	log.Printf("[DEBUG] RegisterUser called with Email: %s", email)
+
 	user, err := s.SupabaseClient.Auth.SignUp(context.Background(), supabase.UserCredentials{
 		Email:    email,
 		Password: password,
 	})
 	if err != nil {
+		log.Printf("[ERROR] Supabase SignUp failed: %v", err) // Log error
 		return "", "", "", errors.New("registration failed: " + err.Error())
 	}
 
 	if user == nil {
+		log.Printf("[ERROR] Unexpected response from Supabase: user is nil") // Log if user is nil
 		return "", "", "", errors.New("unexpected response from Supabase: user is nil")
 	}
 
+	// ✅ Wait for the email confirmation before proceeding
+	log.Println("[INFO] Registration successful. Waiting for email confirmation.")
 	// ✅ Wait for the email confirmation before proceeding
 	fmt.Println("Please confirm your email before proceeding.")
 
@@ -58,21 +63,16 @@ func (s *AuthService) LoginUser(email, password string) (string, string, string,
 		return "", "", "", errors.New("unexpected response from Supabase: session or user is nil")
 	}
 
-	// ✅ Convert string UserID to uuid.UUID
 	userUUID, err := uuid.Parse(session.User.ID)
 	if err != nil {
 		return "", "", "", errors.New("invalid user UUID: " + err.Error())
 	}
 
-	// ✅ Check if user already exists in DB
 	existingUser, _ := s.Repo.GetUserByID(userUUID)
 	if existingUser == nil {
-		// ✅ Save user details after email confirmation
 		newUser := &models.User{
 			UserID: userUUID,
 			Email:  session.User.Email,
-			// Name:   "Harsh Srivastava",
-			// Role:   "admin",
 		}
 		if err := s.Repo.SaveUser(newUser); err != nil {
 			return "", "", "", errors.New("failed to save user in the database: " + err.Error())

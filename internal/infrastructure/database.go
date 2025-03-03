@@ -39,29 +39,30 @@ func InitDatabase() {
 	}
 	log.Println("UUID-OSSP extension enabled.")
 
-	// **Perform Database Migrations in Order**
+	// Perform Database Migrations
 	migrateDatabase()
 }
 
 func migrateDatabase() {
 	log.Println("Starting database migration...")
 
-	// **Migrate User table first**
-	if err := DB.AutoMigrate(&models.User{}); err != nil {
-		log.Fatalf("Failed to migrate User table: %v", err)
-	}
-
-	// **Migrate PipelineExecution next**
-	if err := DB.AutoMigrate(&models.PipelineExecution{}); err != nil {
-		log.Fatalf("Failed to migrate PipelineExecution table: %v", err)
-	}
-
-	// **Migrate ExecutionLog last (depends on PipelineExecution)**
-	if err := DB.AutoMigrate(&models.ExecutionLog{}); err != nil {
-		log.Fatalf("Failed to migrate ExecutionLog table: %v", err)
-	}
+	migrateTable(&models.User{})
+	migrateTable(&models.PipelineExecution{})
+	migrateTable(&models.ExecutionLog{})
 
 	log.Println("Database migration completed successfully.")
+}
+
+// ✅ Function to safely migrate tables if they don't already exist
+func migrateTable(model interface{}) {
+	if DB.Migrator().HasTable(model) {
+		log.Printf("Skipping migration: Table '%T' already exists.", model)
+		return
+	}
+	if err := DB.AutoMigrate(model); err != nil {
+		log.Fatalf("Failed to migrate table '%T': %v", model, err)
+	}
+	log.Printf("Successfully migrated table: %T", model)
 }
 
 // ✅ Function to return DB instance
