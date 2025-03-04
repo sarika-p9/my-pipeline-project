@@ -13,7 +13,7 @@ const Register = () => {
     setMessage("");
     try {
       const response = await axios.post("http://localhost:8080/register", { email, password });
-      setMessage("Check your email and confirm authentication.");
+      setMessage("User Registered Successfully!!\nCheck your email and confirm authentication.");
     } catch (error) {
       setMessage("Registration failed. Please try again.");
     }
