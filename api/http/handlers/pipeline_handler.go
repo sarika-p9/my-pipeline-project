@@ -121,3 +121,23 @@ func (h *PipelineHandler) CancelPipeline(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Pipeline cancelled", "pipeline_id": pipelineID})
 }
+
+// GetPipelineStatusHandler handles the request to fetch pipeline status
+func (h *PipelineHandler) GetPipelineStatusHandler(c *gin.Context) {
+	pipelineID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid pipeline ID"})
+		return
+	}
+
+	status, err := h.Service.GetPipelineStatus(pipelineID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Pipeline not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"pipeline_id": pipelineID.String(),
+		"status":      status,
+	})
+}

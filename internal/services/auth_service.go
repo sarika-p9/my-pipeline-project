@@ -81,3 +81,25 @@ func (s *AuthService) LoginUser(email, password string) (string, string, string,
 
 	return session.User.ID, session.User.Email, session.AccessToken, nil
 }
+
+func (s *AuthService) GetUserByID(userID uuid.UUID) (*models.User, error) {
+	return s.Repo.GetUserByID(userID)
+}
+
+func (s *AuthService) GetUserByToken(token string) (*models.User, error) {
+	// Validate token with Supabase
+	user, err := s.SupabaseClient.Auth.User(context.Background(), token)
+	if err != nil {
+		log.Printf("[ERROR] Invalid token: %v", err)
+		return nil, errors.New("invalid token")
+	}
+
+	// Parse UUID
+	userUUID, err := uuid.Parse(user.ID)
+	if err != nil {
+		return nil, errors.New("invalid user UUID")
+	}
+
+	// Fetch user details from database
+	return s.Repo.GetUserByID(userUUID)
+}

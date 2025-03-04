@@ -65,6 +65,7 @@ func main() {
 	r.POST("/pipelines/:id/start", handler.StartPipeline)
 	r.GET("/pipelines/:id/status", handler.GetPipelineStatus)
 	r.POST("/pipelines/:id/cancel", handler.CancelPipeline)
+	r.GET("/user", gin.WrapF(authHandler.GetUserHandler))
 
 	// Create gRPC server
 	grpcServer := grpc.NewServer()
