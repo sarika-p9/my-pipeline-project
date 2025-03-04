@@ -25,6 +25,7 @@ const Dashboard = () => {
       >
         <Box sx={{ display: "flex", flexDirection: "column", gap: 1.2, mt: 2, width: "90%" }}>
           {[
+            { label: "User Details", color: "#082B6F", route: "/user-details" },
             { label: "Create Pipeline", color: "#0D47A1", route: "/create-pipeline" },
             { label: "Start Execution", color: "#1565C0", route: "/execute-pipeline" },
             { label: "Get Status", color: "#1E88E5", route: "/get-status" },

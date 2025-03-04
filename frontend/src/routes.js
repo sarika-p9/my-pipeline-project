@@ -2,11 +2,12 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./components/Login";
 import Register from "./components/Register";
-import Dashboard from "./pages/Dashboard";
-import CreatePipeline from "./pages/CreatePipeline";
-import ExecutePipeline from "./pages/ExecutePipeline";
-import GetStatus from "./pages/GetStatus";
-import CancelPipeline from "./pages/CancelPipeline";
+import Dashboard from "./components/Dashboard";
+import CreatePipeline from "./components/CreatePipeline";
+import ExecutePipeline from "./components/ExecutePipeline";
+import GetStatus from "./components/GetStatus";
+import CancelPipeline from "./components/CancelPipeline";
+import UserDetails from "./components/UserDetails";
 
 // Function to check if user is authenticated
 const isAuthenticated = () => {
@@ -28,6 +29,7 @@ const AppRoutes = () => (
       <Route path="/execute-pipeline" element={<ProtectedRoute element={<ExecutePipeline />} />} />
       <Route path="/get-status" element={<ProtectedRoute element={<GetStatus />} />} />
       <Route path="/cancel-pipeline" element={<ProtectedRoute element={<CancelPipeline />} />} />
+      <Route path="/user-details" element={<ProtectedRoute element={<UserDetails />} />} />
       <Route path="*" element={<Navigate to={isAuthenticated() ? "/dashboard" : "/login"} />} />
     </Routes>
   </Router>
