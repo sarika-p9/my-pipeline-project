@@ -41,6 +41,7 @@ const UserDetails = () => {
     }}>
       <div style={{ textAlign: "center" }}>
         <h2>User Details</h2>
+        {console.log("User state:", user)} {/* Debugging */}
         {user ? (
           <div>
             <p><strong>User ID:</strong> {user.UserID}</p>
@@ -53,7 +54,5 @@ const UserDetails = () => {
       </div>
     </div>
   );
-
-};
-
+};  
 export default UserDetails;

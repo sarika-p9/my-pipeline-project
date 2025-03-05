@@ -69,32 +69,11 @@ func (h *AuthHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{
 		"user_id": userID,
 		"email":   email,
 		"token":   token,
 	})
-}
-
-func (h *AuthHandler) GetUserHandler(w http.ResponseWriter, r *http.Request) {
-	// Extract Authorization token from request header
-	authHeader := r.Header.Get("Authorization")
-	if authHeader == "" {
-		http.Error(w, "Missing Authorization header", http.StatusUnauthorized)
-		return
-	}
-
-	tokenStr := authHeader[len("Bearer "):]
-
-	// Get user from token
-	user, err := h.Service.GetUserByToken(tokenStr)
-	if err != nil {
-		http.Error(w, "Invalid or expired token", http.StatusUnauthorized)
-		return
-	}
-
-	// Return user details
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(user)
 }

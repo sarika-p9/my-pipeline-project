@@ -36,8 +36,15 @@ func main() {
 	}
 
 	// Initialize database and Supabase client
+	// Initialize the database
 	infrastructure.InitDatabase()
-	dbRepo := secondary.NewDatabaseAdapter()
+
+	// Get the database instance
+	db := infrastructure.GetDB() // ✅ Fix: Use GetDB() to retrieve *gorm.DB
+
+	// Pass the database instance to the repository adapter
+	dbRepo := secondary.NewDatabaseAdapter(db) // ✅ Fix: Passing *gorm.DB correctly
+
 	authService := services.NewAuthService(dbRepo)
 	pipelineService := services.NewPipelineService(dbRepo)
 

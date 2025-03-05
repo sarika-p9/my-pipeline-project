@@ -18,12 +18,68 @@ type AuthService struct {
 	Repo           ports.PipelineRepository
 }
 
+// NewAuthService initializes the AuthService
 func NewAuthService(repo ports.PipelineRepository) *AuthService {
 	return &AuthService{
 		SupabaseClient: infrastructure.InitSupabaseClient(),
 		Repo:           repo,
 	}
 }
+
+// // RegisterUser registers a new user and saves their details in the database
+// func (s *AuthService) RegisterUser(email, password string) (string, string, string, error) {
+// 	user, err := s.SupabaseClient.Auth.SignUp(context.Background(), supabase.UserCredentials{
+// 		Email:    email,
+// 		Password: password,
+// 	})
+// 	if err != nil {
+// 		return "", "", "", errors.New("registration failed: " + err.Error())
+// 	}
+
+// 	if user == nil {
+// 		return "", "", "", errors.New("unexpected response from Supabase: user is nil")
+// 	}
+
+// 	// Since SignUp does NOT return a session, manually log in to get a session token
+// 	session, err := s.SupabaseClient.Auth.SignIn(context.Background(), supabase.UserCredentials{
+// 		Email:    email,
+// 		Password: password,
+// 	})
+// 	if err != nil {
+// 		return "", "", "", errors.New("login after registration failed: " + err.Error())
+// 	}
+
+// 	// Save user details in the database
+// 	newUser := &models.User{
+// 		UserID: uuid.MustParse(user.ID),
+// 		Email:  user.Email,
+// 		Name:   "Harsh Srivastava", // Name should be updated from the UI later
+// 		Role:   "admin", // Default role
+// 	}
+
+// 	if err := s.Repo.SaveUser(newUser); err != nil {
+// 		return "", "", "", errors.New("failed to save user in the database: " + err.Error())
+// 	}
+
+// 	return user.ID, user.Email, session.AccessToken, nil
+// }
+
+// // LoginUser authenticates a user and returns ID, email, and token
+// func (s *AuthService) LoginUser(email, password string) (string, string, string, error) {
+// 	session, err := s.SupabaseClient.Auth.SignIn(context.Background(), supabase.UserCredentials{
+// 		Email:    email,
+// 		Password: password,
+// 	})
+// 	if err != nil {
+// 		return "", "", "", errors.New("login failed: " + err.Error())
+// 	}
+
+// 	if session.User.ID == "" || session.User.Email == "" || session.AccessToken == "" {
+// 		return "", "", "", errors.New("unexpected response from Supabase: session or user is nil")
+// 	}
+
+// 	return session.User.ID, session.User.Email, session.AccessToken, nil
+// }
 
 func (s *AuthService) RegisterUser(email, password string) (string, string, string, error) {
 	log.Printf("[DEBUG] RegisterUser called with Email: %s", email)
@@ -63,16 +119,21 @@ func (s *AuthService) LoginUser(email, password string) (string, string, string,
 		return "", "", "", errors.New("unexpected response from Supabase: session or user is nil")
 	}
 
+	// ✅ Convert string UserID to uuid.UUID
 	userUUID, err := uuid.Parse(session.User.ID)
 	if err != nil {
 		return "", "", "", errors.New("invalid user UUID: " + err.Error())
 	}
 
+	// ✅ Check if user already exists in DB
 	existingUser, _ := s.Repo.GetUserByID(userUUID)
 	if existingUser == nil {
+		// ✅ Save user details after email confirmation
 		newUser := &models.User{
 			UserID: userUUID,
 			Email:  session.User.Email,
+			// Name:   "Harsh Srivastava",
+			// Role:   "admin",
 		}
 		if err := s.Repo.SaveUser(newUser); err != nil {
 			return "", "", "", errors.New("failed to save user in the database: " + err.Error())
@@ -82,24 +143,12 @@ func (s *AuthService) LoginUser(email, password string) (string, string, string,
 	return session.User.ID, session.User.Email, session.AccessToken, nil
 }
 
+// GetUserByID fetches user details
 func (s *AuthService) GetUserByID(userID uuid.UUID) (*models.User, error) {
 	return s.Repo.GetUserByID(userID)
 }
 
-func (s *AuthService) GetUserByToken(token string) (*models.User, error) {
-	// Validate token with Supabase
-	user, err := s.SupabaseClient.Auth.User(context.Background(), token)
-	if err != nil {
-		log.Printf("[ERROR] Invalid token: %v", err)
-		return nil, errors.New("invalid token")
-	}
-
-	// Parse UUID
-	userUUID, err := uuid.Parse(user.ID)
-	if err != nil {
-		return nil, errors.New("invalid user UUID")
-	}
-
-	// Fetch user details from database
-	return s.Repo.GetUserByID(userUUID)
+// UpdateUser updates user details
+func (s *AuthService) UpdateUser(userID uuid.UUID, updates map[string]interface{}) error {
+	return s.Repo.UpdateUser(userID, updates)
 }

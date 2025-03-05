@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -13,13 +12,8 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/nats-io/nats.go"
 	"github.com/streadway/amqp"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
 
-	proto "github.com/sarika-p9/my-pipeline-project/api/grpc/proto/authentication"
-	pipeline_proto "github.com/sarika-p9/my-pipeline-project/api/grpc/proto/pipeline"
 	"github.com/sarika-p9/my-pipeline-project/api/http/handlers"
-	"github.com/sarika-p9/my-pipeline-project/internal/adapters/primary"
 	"github.com/sarika-p9/my-pipeline-project/internal/adapters/secondary"
 	"github.com/sarika-p9/my-pipeline-project/internal/infrastructure"
 	"github.com/sarika-p9/my-pipeline-project/internal/messaging"
@@ -39,14 +33,22 @@ func main() {
 	}
 
 	// Initialize database and Supabase client
+	// Initialize the database
 	infrastructure.InitDatabase()
-	dbRepo := secondary.NewDatabaseAdapter()
+
+	// Get the database instance
+	db := infrastructure.GetDB() // ✅ Fix: Use GetDB() to retrieve *gorm.DB
+
+	// Pass the database instance to the repository adapter
+	dbRepo := secondary.NewDatabaseAdapter(db) // ✅ Fix: Passing *gorm.DB correctly
+
 	authService := services.NewAuthService(dbRepo)
 	pipelineService := services.NewPipelineService(dbRepo)
 
 	// Initialize REST API handler
 	handler := &handlers.PipelineHandler{Service: pipelineService}
 	authHandler := &handlers.AuthHandler{Service: authService}
+	userHandler := &handlers.UserHandler{Service: authService}
 
 	// Setup Gin router
 	r := gin.Default()
@@ -61,33 +63,38 @@ func main() {
 
 	r.POST("/register", gin.WrapF(authHandler.RegisterHandler))
 	r.POST("/login", gin.WrapF(authHandler.LoginHandler))
-	r.POST("/pipelines", handler.CreatePipeline)
+
+	// User profile routes
+	r.GET("/user/:id", userHandler.GetUserProfile)
+	r.PUT("/user/:id", userHandler.UpdateUserProfile)
+	r.GET("/pipelines", handler.GetUserPipelines)
+	r.GET("/pipelines/:id/stages", handler.GetPipelineStages)
+	r.POST("/createpipelines", handler.CreatePipeline)
 	r.POST("/pipelines/:id/start", handler.StartPipeline)
 	r.GET("/pipelines/:id/status", handler.GetPipelineStatus)
 	r.POST("/pipelines/:id/cancel", handler.CancelPipeline)
-	r.GET("/user", gin.WrapF(authHandler.GetUserHandler))
 
-	// Create gRPC server
-	grpcServer := grpc.NewServer()
-	authServer := &primary.AuthServer{AuthService: authService}
-	pipelineServer := &primary.PipelineServer{Service: pipelineService}
+	// // Create gRPC server
+	// grpcServer := grpc.NewServer()
+	// authServer := &primary.AuthServer{AuthService: authService}
+	// pipelineServer := &primary.PipelineServer{Service: pipelineService}
 
-	// Register gRPC services
-	proto.RegisterAuthServiceServer(grpcServer, authServer)
-	pipeline_proto.RegisterPipelineServiceServer(grpcServer, pipelineServer)
-	reflection.Register(grpcServer)
+	// // Register gRPC services
+	// proto.RegisterAuthServiceServer(grpcServer, authServer)
+	// pipeline_proto.RegisterPipelineServiceServer(grpcServer, pipelineServer)
+	// reflection.Register(grpcServer)
 
-	// Start gRPC server
-	go func() {
-		listener, err := net.Listen("tcp", ":50051")
-		if err != nil {
-			log.Fatalf("Failed to listen on port 50051: %v", err)
-		}
-		log.Println("Starting gRPC server on port 50051...")
-		if err := grpcServer.Serve(listener); err != nil {
-			log.Fatalf("Failed to start gRPC server: %v", err)
-		}
-	}()
+	// // Start gRPC server
+	// go func() {
+	// 	listener, err := net.Listen("tcp", ":50051")
+	// 	if err != nil {
+	// 		log.Fatalf("Failed to listen on port 50051: %v", err)
+	// 	}
+	// 	log.Println("Starting gRPC server on port 50051...")
+	// 	if err := grpcServer.Serve(listener); err != nil {
+	// 		log.Fatalf("Failed to start gRPC server: %v", err)
+	// 	}
+	// }()
 
 	// Initialize RabbitMQ
 	go func() {
@@ -109,12 +116,10 @@ func main() {
 	}()
 
 	// Start REST API server
-	go func() {
-		log.Println("Starting API server on port 8080...")
-		if err := http.ListenAndServe(":8080", r); err != nil {
-			log.Fatalf("Failed to start REST API server: %v", err)
-		}
-	}()
+	log.Println("Starting API server on port 8080...")
+	if err := http.ListenAndServe(":8080", r); err != nil {
+		log.Fatalf("Failed to start server: %v", err)
+	}
 
 	// Graceful shutdown
 	quit := make(chan os.Signal, 1)
@@ -122,6 +127,6 @@ func main() {
 	<-quit
 
 	log.Println("Shutting down servers...")
-	grpcServer.GracefulStop()
+	// grpcServer.GracefulStop()
 	log.Println("Servers exited gracefully")
 }
