@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/nedpals/supabase-go"
@@ -151,4 +152,25 @@ func (s *AuthService) GetUserByID(userID uuid.UUID) (*models.User, error) {
 // UpdateUser updates user details
 func (s *AuthService) UpdateUser(userID uuid.UUID, updates map[string]interface{}) error {
 	return s.Repo.UpdateUser(userID, updates)
+}
+
+// LogoutUser revokes the user's session token
+// LogoutUser revokes the user's session token
+func (s *AuthService) LogoutUser(token string) error {
+	if token == "" {
+		log.Println("LogoutUser error: empty token")
+		return errors.New("empty token")
+	}
+
+	err := s.SupabaseClient.Auth.SignOut(context.Background(), token)
+	if err != nil {
+		if strings.Contains(err.Error(), "token is expired") {
+			log.Println("Logout warning: token is already expired, treating as logged out.")
+			return nil // Ignore the error and return success
+		}
+		log.Println("Supabase logout error:", err)
+		return errors.New("failed to log out: " + err.Error())
+	}
+
+	return nil
 }

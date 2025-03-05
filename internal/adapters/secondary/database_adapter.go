@@ -42,25 +42,38 @@ func (d *DatabaseAdapter) SavePipelineExecution(execution *models.PipelineExecut
 }
 
 func (d *DatabaseAdapter) UpdatePipelineExecution(execution *models.PipelineExecution) error {
-	return d.DB.Model(execution).Where("pipeline_id = ?", execution.PipelineID).Update("status", execution.Status).Error
+	return d.DB.Model(&models.PipelineExecution{}).
+		Where("pipeline_id = ?", execution.PipelineID).
+		Update("status", execution.Status).Error
 }
 
 func (d *DatabaseAdapter) SaveExecutionLog(logEntry *models.ExecutionLog) error {
 	return d.DB.Create(logEntry).Error
 }
 
+// ✅ FIX: Accept pipelineID as string and convert to uuid.UUID
 func (d *DatabaseAdapter) GetPipelineStatus(pipelineID string) (string, error) {
+	parsedID, err := uuid.Parse(pipelineID)
+	if err != nil {
+		return "", err // Return an error if the pipelineID is invalid
+	}
+
 	var execution models.PipelineExecution
-	if err := d.DB.Where("pipeline_id = ?", pipelineID).First(&execution).Error; err != nil {
+	if err := d.DB.Where("pipeline_id = ?", parsedID).First(&execution).Error; err != nil {
 		return "", err
 	}
 	return execution.Status, nil
 }
 
-// GetPipelinesByUser retrieves all pipelines for a specific user
+// ✅ FIX: Accept userID as string and convert to uuid.UUID
 func (d *DatabaseAdapter) GetPipelinesByUser(userID string) ([]models.PipelineExecution, error) {
+	parsedID, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, err
+	}
+
 	var pipelines []models.PipelineExecution
-	err := d.DB.Where("user_id = ?", userID).Find(&pipelines).Error
+	err = d.DB.Where("user_id = ?", parsedID).Find(&pipelines).Error
 	return pipelines, err
 }
 

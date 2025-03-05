@@ -1,9 +1,8 @@
 import React, { useState } from "react";
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from "react-router-dom";
-import { TextField, Button, Select, MenuItem, Typography, Container, Box, AppBar, Toolbar } from "@mui/material";
+import { TextField, Button, Typography, Container, Box } from "@mui/material";
 import axios from "axios";
 import Dashboard from "./Dashboard";
-
 
 const AuthLayout = ({ children, title }) => {
   return (
@@ -20,16 +19,19 @@ const RegisterPage = ({ apiType }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
-  const navigate = useNavigate();
 
   const handleRegister = async () => {
     setMessage("");
     if (apiType === "rest") {
       try {
-        await axios.post("http://localhost:8080/register", { email, password });
+        await axios.post("http://localhost:8080/register", { email, password }, {
+          headers: { "Content-Type": "application/json" },
+          withCredentials: true,
+        });
         setMessage("Registration successful! Please check your email to verify.");
         window.open("https://mail.google.com", "_blank");
-      } catch {
+      } catch (error) {
+        console.error("Registration failed:", error.response?.data || error.message);
         setMessage("Registration failed. Please try again.");
       }
     } else {
@@ -56,8 +58,7 @@ const LoginPage = ({ apiType }) => {
   const navigate = useNavigate();
 
   const handleLogin = async () => {
-    setMessage(""); // Reset error message
-  
+    setMessage("");
     if (apiType === "rest") {
       try {
         const response = await axios.post(
@@ -65,29 +66,25 @@ const LoginPage = ({ apiType }) => {
           { email, password },
           {
             headers: { "Content-Type": "application/json" },
-            withCredentials: true, // ✅ Ensure cross-origin cookies are included
+            withCredentials: true,
           }
         );
-  
-        console.log("Full Response from Backend:", response.data); // Debugging log
-  
-        // ✅ Extract `user_id` and `token` properly
+
+        console.log("Full Response from Backend:", response.data);
         const { user_id, token, email: responseEmail } = response.data;
-  
+
         if (!user_id || !token || !responseEmail) {
-          throw new Error("Invalid response from backend"); // ✅ Ensure required fields exist
+          throw new Error("Invalid response from backend");
         }
-  
-        // ✅ Store user_id and token for session persistence
+
         localStorage.setItem("user_id", user_id);
         localStorage.setItem("email", responseEmail);
         localStorage.setItem("token", token);
-  
+
         console.log("Login Successful! Redirecting...");
         navigate("/dashboard");
-  
       } catch (error) {
-        console.error("Login failed:", error);
+        console.error("Login failed:", error.response?.data || error.message);
         setMessage("Login failed. Please check your credentials.");
       }
     } else {
@@ -95,8 +92,6 @@ const LoginPage = ({ apiType }) => {
       setMessage("Check console for gRPC login command.");
     }
   };
-  
-  
 
   return (
     <AuthLayout title="Login">
@@ -114,15 +109,6 @@ const App = () => {
 
   return (
     <Router>
-      <AppBar position="static">
-        <Toolbar sx={{ display: "flex", justifyContent: "space-between" }}>
-          <Typography variant="h6">Distributed Manufacturing System</Typography>
-          <Select value={apiType} onChange={(e) => setApiType(e.target.value)} sx={{ color: "white", backgroundColor: "gray" }}>
-            <MenuItem value="rest">REST API</MenuItem>
-            <MenuItem value="grpc">gRPC</MenuItem>
-          </Select>
-        </Toolbar>
-      </AppBar>
       <Routes>
         <Route path="/register" element={<RegisterPage apiType={apiType} />} />
         <Route path="/login" element={<LoginPage apiType={apiType} />} />

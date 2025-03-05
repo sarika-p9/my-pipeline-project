@@ -7,7 +7,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/nats-io/nats.go"
@@ -53,16 +52,26 @@ func main() {
 	// Setup Gin router
 	r := gin.Default()
 
-	// Enable CORS for frontend integration
-	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"*"}, // Allows requests from any origin (including Postman Web & React)
-		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
-		AllowCredentials: true,
-	}))
+	r.Use(func(c *gin.Context) {
+		origin := c.Request.Header.Get("Origin")
+		if origin == "http://localhost:3000" { // ✅ Allow only frontend origin
+			c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
+			c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+			c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			c.Writer.Header().Set("Access-Control-Allow-Credentials", "true") // ✅ Required for credentials
+		}
 
-	r.POST("/register", gin.WrapF(authHandler.RegisterHandler))
-	r.POST("/login", gin.WrapF(authHandler.LoginHandler))
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(http.StatusOK)
+			return
+		}
+
+		c.Next()
+	})
+
+	r.POST("/register", authHandler.RegisterHandler)
+	r.POST("/login", authHandler.LoginHandler)
+	r.POST("/logout", authHandler.LogoutHandler)
 
 	// User profile routes
 	r.GET("/user/:id", userHandler.GetUserProfile)
@@ -117,7 +126,8 @@ func main() {
 
 	// Start REST API server
 	log.Println("Starting API server on port 8080...")
-	if err := http.ListenAndServe(":8080", r); err != nil {
+	if err := r.Run(":8080"); err != nil {
+
 		log.Fatalf("Failed to start server: %v", err)
 	}
 

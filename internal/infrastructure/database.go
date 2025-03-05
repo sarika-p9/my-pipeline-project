@@ -13,7 +13,7 @@ import (
 var DB *gorm.DB
 
 func InitDatabase() {
-	// Load environment variables from .env file
+	// Load environment variables
 	if err := godotenv.Load(); err != nil {
 		log.Println("Warning: No .env file found. Using system environment variables.")
 	}
@@ -26,15 +26,17 @@ func InitDatabase() {
 	log.Printf("Connecting to database: %s", dsn)
 
 	var err error
-	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	DB, err = gorm.Open(postgres.New(postgres.Config{
+		DSN:                  dsn,
+		PreferSimpleProtocol: true, // Disable prepared statements
+	}), &gorm.Config{})
 	if err != nil {
 		log.Fatalf("Failed to connect to Supabase database: %v", err)
 	}
 	log.Println("Database connection established.")
 
 	// Enable UUID extension
-	err = DB.Exec("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";").Error
-	if err != nil {
+	if err := DB.Exec("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";").Error; err != nil {
 		log.Fatalf("Failed to enable uuid-ossp extension: %v", err)
 	}
 	log.Println("UUID-OSSP extension enabled.")
@@ -46,6 +48,7 @@ func InitDatabase() {
 func migrateDatabase() {
 	log.Println("Starting database migration...")
 
+	// ✅ Migrate tables safely
 	migrateTable(&models.User{})
 	migrateTable(&models.PipelineExecution{})
 	migrateTable(&models.ExecutionLog{})
@@ -53,19 +56,22 @@ func migrateDatabase() {
 	log.Println("Database migration completed successfully.")
 }
 
-// ✅ Function to safely migrate tables if they don't already exist
+// ✅ Function to migrate tables properly
 func migrateTable(model interface{}) {
+	tableName := DB.Migrator().CurrentDatabase()
 	if DB.Migrator().HasTable(model) {
-		log.Printf("Skipping migration: Table '%T' already exists.", model)
+		log.Printf("Skipping migration: Table %s already exists.", tableName)
 		return
 	}
+
 	if err := DB.AutoMigrate(model); err != nil {
-		log.Fatalf("Failed to migrate table '%T': %v", model, err)
+		log.Fatalf("Failed to migrate table %s: %v", tableName, err)
 	}
-	log.Printf("Successfully migrated table: %T", model)
+
+	log.Printf("Successfully migrated table: %s", tableName)
 }
 
-// ✅ Function to return DB instance
+// ✅ Function to return DB instance safely
 func GetDB() *gorm.DB {
 	if DB == nil {
 		log.Fatal("Database is not initialized. Call InitDatabase() first.")

@@ -8,7 +8,6 @@ import (
 	"github.com/nedpals/supabase-go"
 )
 
-// InitSupabaseClient initializes and returns a Supabase client
 func InitSupabaseClient() *supabase.Client {
 	err := godotenv.Load()
 	if err != nil {

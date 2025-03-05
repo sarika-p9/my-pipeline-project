@@ -43,3 +43,15 @@ func (s *AuthServer) Login(ctx context.Context, req *proto.LoginRequest) (*proto
 		Token:  token,
 	}, nil
 }
+
+func (s *AuthServer) Logout(ctx context.Context, req *proto.LogoutRequest) (*proto.LogoutResponse, error) {
+	err := s.AuthService.LogoutUser(req.Token)
+	if err != nil {
+		log.Println("Logout error:", err)
+		return nil, errors.New("logout failed")
+	}
+
+	return &proto.LogoutResponse{
+		Message: "Logout successful",
+	}, nil
+}
