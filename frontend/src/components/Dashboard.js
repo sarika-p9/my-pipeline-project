@@ -8,6 +8,29 @@ import RemoveIcon from "@mui/icons-material/Remove";
 import LogoutIcon from "@mui/icons-material/Logout";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import Sidebar from "./Sidebar";
+
+const isTokenExpired = () => {
+  const token = localStorage.getItem("token");
+  if (!token) return true;
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return Date.now() >= payload.exp * 1000;
+  } catch {
+    return true;
+  }
+};
+
+const getUserIdFromToken = () => {
+  const token = localStorage.getItem("token");
+  if (!token) return null;
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1])); 
+    return payload.sub; 
+  } catch {
+    return null;
+  }
+};
 
 const Dashboard = () => {
   const [user, setUser] = useState({ name: "", role: "", email: "" });
@@ -21,23 +44,32 @@ const Dashboard = () => {
   const [selectedPipelineStages, setSelectedPipelineStages] = useState([]);
   const [selectedPipelineId, setSelectedPipelineId] = useState(null);
   const [openStageModal, setOpenStageModal] = useState(false);
-
-  // Retrieve user_id from localStorage
-  const user_id = localStorage.getItem("user_id");
-
+  const user_id = getUserIdFromToken();
+  
   useEffect(() => {
-    if (!user_id) {
-      console.error("User ID not found! Redirecting to login.");
+    if (isTokenExpired()) {
+      console.warn("Token expired. Logging out...");
+      localStorage.clear();
       navigate("/login");
       return;
     }
     fetchUserProfile();
     fetchUserPipelines();
-  }, [user_id]);
+  }, []);
+
+  const authAxios = axios.create({
+    baseURL: "http://localhost:8080",
+    headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+  });
+
+  const logoutUser = () => {
+    localStorage.clear();
+    navigate("/login");
+  };
 
   const fetchUserProfile = async () => {
     try {
-      const response = await axios.get(`http://localhost:8080/user/${user_id}`);
+      const response = await authAxios.get(`/user/${localStorage.getItem("user_id")}`);
       if (response.data) {
         setUser(response.data);
         localStorage.setItem("user_name", response.data.name);
@@ -45,12 +77,13 @@ const Dashboard = () => {
       }
     } catch (error) {
       console.error("Failed to fetch user profile", error);
+      logoutUser();
     }
   };
 
   const fetchUserPipelines = async () => {
     try {
-      const response = await axios.get(`http://localhost:8080/pipelines?user_id=${user_id}`);
+      const response = await authAxios.get(`/pipelines?user_id=${user_id}`);
       console.log("Fetched Pipelines:", response.data);
       if (Array.isArray(response.data)) {
         setPipelines(response.data);
@@ -64,7 +97,7 @@ const Dashboard = () => {
 
   const handleCreatePipeline = async () => {
     try {
-      await axios.post("http://localhost:8080/createpipelines", {
+      await authAxios.post("/createpipelines", {
         stages: pipelineStages,
         is_parallel: isParallel,
         user_id: user_id,
@@ -78,7 +111,7 @@ const Dashboard = () => {
   const handlePipelineAction = async (pipelineId, status) => {
     try {
       if (status === "Running") {
-        await axios.post(`http://localhost:8080/pipelines/${pipelineId}/cancel`, {
+        await authAxios.post(`/pipelines/${pipelineId}/cancel`, {
           user_id: user_id,
           is_parallel: isParallel,
         });
@@ -86,20 +119,19 @@ const Dashboard = () => {
         alert("Completed pipelines cannot be started again.");
         return;
       } else {
-        await axios.post(`http://localhost:8080/pipelines/${pipelineId}/start`, {
+        await authAxios.post(`/pipelines/${pipelineId}/start`, {
           user_id: user_id,
           input: { raw_material: "Steel", quantity: 100 },
           is_parallel: isParallel,
         });
       }
-      // fetchUserPipelines();
-      // 🚀 **Update state instantly & reload status**
+  
       setPipelines((prevPipelines) =>
         prevPipelines.map((pipeline) =>
           pipeline.PipelineID === pipelineId ? { ...pipeline, Status: "Running" } : pipeline
         )
       );
-      setTimeout(fetchUserPipelines, 1000); // ✅ Refresh status after 1 sec
+      setTimeout(fetchUserPipelines, 1000); 
     } catch (error) {
       console.error("Failed to update pipeline status", error);
     }
@@ -107,26 +139,27 @@ const Dashboard = () => {
 
   const fetchPipelineStages = async (pipelineId) => {
     try {
-      console.log(`Fetching stages for pipeline: ${pipelineId}`); // ✅ Debugging log
+      console.log(`Fetching stages for pipeline: ${pipelineId}`); 
   
-      const response = await axios.get(`http://localhost:8080/pipelines/${pipelineId}/stages`);
+      const response = await authAxios.get(`/pipelines/${pipelineId}/stages`);
       
-      console.log("Stages Data:", response.data); // ✅ Check API response
+      console.log("Stages Data:", response.data); 
   
       if (Array.isArray(response.data)) {
         setSelectedPipelineStages(response.data);
-        setOpenStageModal(true); // ✅ Ensure modal opens
+        setOpenStageModal(true); 
       } else {
         console.error("Unexpected response format:", response.data);
       }
     } catch (error) {
       console.error("Failed to fetch pipeline stages:", error);
+      logoutUser();
     }
   };
 
   const handleProfileSave = async () => {
     try {
-      await axios.put(`http://localhost:8080/user/${user_id}`, {
+      await authAxios.put(`/user/${user_id}`, {
         name: user.name,
         role: user.role,
       });
@@ -135,7 +168,7 @@ const Dashboard = () => {
       console.error("Failed to update profile", error);
     }
   };
-
+  
   const handleLogout = async () => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -149,13 +182,13 @@ const Dashboard = () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ token }), // ✅ Send token in the request body
+        body: JSON.stringify({ token }), 
       });
   
       if (response.ok) {
-        localStorage.removeItem("token"); // Clear token from storage
+        localStorage.removeItem("token"); 
         alert("Logout successful");
-        window.location.href = "/login"; // Redirect to login page
+        window.location.href = "/login"; 
       } else {
         console.error("Logout failed");
       }
@@ -163,8 +196,6 @@ const Dashboard = () => {
       console.error("Error:", error);
     }
   };
-  
-  
 
   return (
     <Container maxWidth="md">
@@ -180,7 +211,7 @@ const Dashboard = () => {
         <Typography variant="h4">Welcome, {user.name || "User"}</Typography>
       </Box>
 
-      {/* Pipelines Table */}
+      
       <Box sx={{ mt: 5, p: 3, boxShadow: 3, borderRadius: 2 }}>
         <Typography variant="h5" sx={{ mb: 2 }}>Your Pipelines</Typography>
         {pipelines.length > 0 ? (
@@ -260,7 +291,7 @@ const Dashboard = () => {
   </DialogActions>
 </Dialog>
 
-{/* Edit Profile Dialog */}
+
 <Dialog open={profileOpen} onClose={() => setProfileOpen(false)}>
         <DialogTitle>Edit Profile</DialogTitle>
         <DialogContent>
@@ -275,12 +306,10 @@ const Dashboard = () => {
       </Dialog>
 
 
-      {/* Create New Pipeline */}
-      {/* Create New Pipeline Section */}
+
     <Box sx={{ mt: 5, p: 3, boxShadow: 3, borderRadius: 2 }}>
       <Typography variant="h5" sx={{ mb: 2 }}>Create New Pipeline</Typography>
 
-      {/* Number of Stages Title + Counter */}
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 3, mt: 2 }}>
         <Typography variant="h6" sx={{ minWidth: 150, textAlign: "right" }}>Number of Stages:</Typography>
         <IconButton onClick={() => setPipelineStages(Math.max(1, pipelineStages - 1))}>
@@ -292,7 +321,6 @@ const Dashboard = () => {
         </IconButton>
       </Box>
 
-      {/* Parallel/Sequential Selection & Create Button */}
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 3, mt: 3 }}>
         <ToggleButtonGroup value={isParallel} exclusive onChange={() => setIsParallel(!isParallel)}>
           <ToggleButton value={false}>Sequential</ToggleButton>
@@ -304,11 +332,12 @@ const Dashboard = () => {
         </Button> 
       </Box>
     </Box>
-
-    
-
     </Container>
   );
 };
 
 export default Dashboard;
+
+
+
+

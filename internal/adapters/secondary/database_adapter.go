@@ -37,17 +37,17 @@ func (d *DatabaseAdapter) UpdateUser(userID uuid.UUID, updates map[string]interf
 	return d.DB.Model(&models.User{}).Where("user_id = ?", userID).Updates(updates).Error
 }
 
-func (d *DatabaseAdapter) SavePipelineExecution(execution *models.PipelineExecution) error {
+func (d *DatabaseAdapter) SavePipelineExecution(execution *models.Pipelines) error {
 	return d.DB.Create(execution).Error
 }
 
-func (d *DatabaseAdapter) UpdatePipelineExecution(execution *models.PipelineExecution) error {
-	return d.DB.Model(&models.PipelineExecution{}).
+func (d *DatabaseAdapter) UpdatePipelineExecution(execution *models.Pipelines) error {
+	return d.DB.Model(&models.Pipelines{}).
 		Where("pipeline_id = ?", execution.PipelineID).
 		Update("status", execution.Status).Error
 }
 
-func (d *DatabaseAdapter) SaveExecutionLog(logEntry *models.ExecutionLog) error {
+func (d *DatabaseAdapter) SaveExecutionLog(logEntry *models.Stages) error {
 	return d.DB.Create(logEntry).Error
 }
 
@@ -58,7 +58,7 @@ func (d *DatabaseAdapter) GetPipelineStatus(pipelineID string) (string, error) {
 		return "", err // Return an error if the pipelineID is invalid
 	}
 
-	var execution models.PipelineExecution
+	var execution models.Pipelines
 	if err := d.DB.Where("pipeline_id = ?", parsedID).First(&execution).Error; err != nil {
 		return "", err
 	}
@@ -66,20 +66,20 @@ func (d *DatabaseAdapter) GetPipelineStatus(pipelineID string) (string, error) {
 }
 
 // ✅ FIX: Accept userID as string and convert to uuid.UUID
-func (d *DatabaseAdapter) GetPipelinesByUser(userID string) ([]models.PipelineExecution, error) {
+func (d *DatabaseAdapter) GetPipelinesByUser(userID string) ([]models.Pipelines, error) {
 	parsedID, err := uuid.Parse(userID)
 	if err != nil {
 		return nil, err
 	}
 
-	var pipelines []models.PipelineExecution
+	var pipelines []models.Pipelines
 	err = d.DB.Where("user_id = ?", parsedID).Find(&pipelines).Error
 	return pipelines, err
 }
 
 // GetPipelineStages fetches all stages associated with a pipeline
-func (d *DatabaseAdapter) GetPipelineStages(pipelineID uuid.UUID) ([]models.ExecutionLog, error) {
-	var stages []models.ExecutionLog
+func (d *DatabaseAdapter) GetPipelineStages(pipelineID uuid.UUID) ([]models.Stages, error) {
+	var stages []models.Stages
 	if err := d.DB.Where("pipeline_id = ?", pipelineID).Find(&stages).Error; err != nil {
 		return nil, err
 	}

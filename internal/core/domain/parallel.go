@@ -53,7 +53,7 @@ func (p *ParallelPipelineOrchestrator) Execute(ctx context.Context, userID uuid.
 	}
 
 	// ✅ Step 2: Update pipeline execution status instead of inserting a new record
-	if err := p.dbRepo.UpdatePipelineExecution(&models.PipelineExecution{
+	if err := p.dbRepo.UpdatePipelineExecution(&models.Pipelines{
 		PipelineID: pipelineID,
 		Status:     "Running",
 		UpdatedAt:  time.Now(),
@@ -74,7 +74,7 @@ func (p *ParallelPipelineOrchestrator) Execute(ctx context.Context, userID uuid.
 			defer wg.Done()
 			result, err := stage.Execute(ctx, input)
 
-			logEntry := &models.ExecutionLog{
+			logEntry := &models.Stages{
 				StageID:    stage.GetID(),
 				PipelineID: pipelineID,
 				Status:     "Completed",
@@ -108,7 +108,7 @@ func (p *ParallelPipelineOrchestrator) Execute(ctx context.Context, userID uuid.
 		finalStatus = "Failed"
 	}
 
-	if err := p.dbRepo.UpdatePipelineExecution(&models.PipelineExecution{
+	if err := p.dbRepo.UpdatePipelineExecution(&models.Pipelines{
 		PipelineID: pipelineID,
 		Status:     finalStatus,
 		UpdatedAt:  time.Now(),
@@ -144,7 +144,7 @@ func (p *ParallelPipelineOrchestrator) Cancel(pipelineID uuid.UUID, userID uuid.
 	}
 	log.Printf("Cancelling pipeline %s...", pipelineID)
 
-	err = p.dbRepo.UpdatePipelineExecution(&models.PipelineExecution{
+	err = p.dbRepo.UpdatePipelineExecution(&models.Pipelines{
 		PipelineID: pipelineID, // ✅ Ensure correct pipeline ID
 		Status:     "Cancelled",
 		UpdatedAt:  time.Now(),

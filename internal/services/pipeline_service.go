@@ -42,7 +42,7 @@ func (ps *PipelineService) CreatePipeline(userID uuid.UUID, stageCount int) (uui
 		}
 	}
 
-	err := ps.Repository.SavePipelineExecution(&models.PipelineExecution{
+	err := ps.Repository.SavePipelineExecution(&models.Pipelines{
 		PipelineID: pipelineID,
 		UserID:     userID,
 		Status:     "Created",
@@ -131,7 +131,7 @@ func (ps *PipelineService) CancelPipeline(pipelineID uuid.UUID, userID uuid.UUID
 }
 
 func (ps *PipelineService) updatePipelineStatus(pipelineID uuid.UUID, status string) error {
-	return ps.Repository.UpdatePipelineExecution(&models.PipelineExecution{
+	return ps.Repository.UpdatePipelineExecution(&models.Pipelines{
 		PipelineID: pipelineID,
 		Status:     status,
 		UpdatedAt:  time.Now(),
@@ -139,7 +139,7 @@ func (ps *PipelineService) updatePipelineStatus(pipelineID uuid.UUID, status str
 }
 
 func (ps *PipelineService) logExecutionError(pipelineID uuid.UUID, stageID uuid.UUID, errorMsg string) {
-	logErr := ps.Repository.SaveExecutionLog(&models.ExecutionLog{
+	logErr := ps.Repository.SaveExecutionLog(&models.Stages{
 		StageID:    stageID,
 		PipelineID: pipelineID,
 		Status:     "Error",
@@ -151,11 +151,11 @@ func (ps *PipelineService) logExecutionError(pipelineID uuid.UUID, stageID uuid.
 	}
 }
 
-func (ps *PipelineService) GetPipelinesByUser(userID string) ([]models.PipelineExecution, error) {
+func (ps *PipelineService) GetPipelinesByUser(userID string) ([]models.Pipelines, error) {
 	return ps.Repository.GetPipelinesByUser(userID)
 }
 
 // GetPipelineStages fetches all stages for a given pipeline
-func (ps *PipelineService) GetPipelineStages(pipelineID uuid.UUID) ([]models.ExecutionLog, error) {
+func (ps *PipelineService) GetPipelineStages(pipelineID uuid.UUID) ([]models.Stages, error) {
 	return ps.Repository.GetPipelineStages(pipelineID)
 }

@@ -14,27 +14,22 @@ type User struct {
 	CreatedAt time.Time `gorm:"autoCreateTime"`
 	UpdatedAt time.Time `gorm:"autoUpdateTime"`
 
-	PipelineExecutions []PipelineExecution `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE;"`
+	PipelineExecutions []Pipelines `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE;"`
 }
 
-type PipelineExecution struct {
-	PipelineID    uuid.UUID      `gorm:"type:uuid;default:uuid_generate_v4();primaryKey"`
-	UserID        uuid.UUID      `gorm:"type:uuid;not null;index"`
-	Status        string         `gorm:"type:varchar(50);not null"`
-	CreatedAt     time.Time      `gorm:"autoCreateTime"`
-	UpdatedAt     time.Time      `gorm:"autoUpdateTime"`
-	ExecutionLogs []ExecutionLog `gorm:"foreignKey:PipelineID;constraint:OnDelete:CASCADE;"`
+type Pipelines struct {
+	PipelineID    uuid.UUID `gorm:"type:uuid;default:uuid_generate_v4();primaryKey"`
+	UserID        uuid.UUID `gorm:"type:uuid;not null;index"`
+	Status        string    `gorm:"type:varchar(50);not null"`
+	CreatedAt     time.Time `gorm:"autoCreateTime"`
+	UpdatedAt     time.Time `gorm:"autoUpdateTime"`
+	ExecutionLogs []Stages  `gorm:"foreignKey:PipelineID;constraint:OnDelete:CASCADE;"`
 }
 
-// ExecutionLog stores logs related to pipeline execution stages
-type ExecutionLog struct {
+type Stages struct {
 	StageID    uuid.UUID `gorm:"type:uuid;primaryKey"`
 	PipelineID uuid.UUID `gorm:"type:uuid;not null;index"`
 	Status     string    `gorm:"type:varchar(50);not null"`
 	ErrorMsg   string    `gorm:"type:text"`
 	Timestamp  time.Time `gorm:"autoCreateTime"`
-
-	// PipelineExecution PipelineExecution `gorm:"foreignKey:PipelineID;references:PipelineID;constraint:OnDelete:CASCADE;"`
-	// Explicit foreign key reference to PipelineExecution
-	// PipelineExecution PipelineExecution `gorm:"foreignKey:PipelineID;references:PipelineID;constraint:OnDelete:CASCADE;"`
 }
