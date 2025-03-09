@@ -95,20 +95,36 @@ const UserProfile = () => {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>
-        User Profile
-      </Typography>
-      <Typography variant="body1">Name: {user.name}</Typography>
-      <Typography variant="body1">Role: {user.role}</Typography>
-      <Typography variant="body1">Email: {user.email}</Typography>
+    <Box sx={{
+      p: 3,
+      minHeight: "90vh",
+      display: "flex",
+      backgroundColor: "#42A5F5", 
+      justifyContent: "center",
+      alignItems: "center",
+      flexDirection: "column",
+      position: "relative",
+    }}>
+      
+      <Box sx={{
+        backgroundColor: "#FFFFFF",
+        padding: 4,
+        borderRadius: 2,
+        boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.1)",
+        textAlign: "center",
+      }}>
+        <Typography variant="h4" gutterBottom>
+          User Profile
+        </Typography>
+        <Typography variant="body1">Name: {user.name}</Typography>
+        <Typography variant="body1">Role: {user.role}</Typography>
+        <Typography variant="body1">Email: {user.email}</Typography>
 
-      {/* Direct "Edit Profile" Button */}
-      <Button variant="contained" color="primary" onClick={() => setProfileOpen(true)} sx={{ mt: 2 }}>
-        Edit Profile
-      </Button>
+        <Button variant="contained" color="primary" onClick={() => setProfileOpen(true)} sx={{ mt: 2 }}>
+          Edit Profile
+        </Button>
+      </Box>
 
-      {/* Edit Profile Dialog */}
       <Dialog open={profileOpen} onClose={() => setProfileOpen(false)}>
         <DialogTitle>Edit Profile</DialogTitle>
         <DialogContent>
@@ -119,8 +135,6 @@ const UserProfile = () => {
             value={editUser.name}
             onChange={(e) => setEditUser({ ...editUser, name: e.target.value })}
           />
-
-          {/* Fixed Role Dropdown UI */}
           <FormControl fullWidth margin="normal">
             <InputLabel shrink={true} id="role-label">
               Role
@@ -139,7 +153,6 @@ const UserProfile = () => {
             </Select>
           </FormControl>
         </DialogContent>
-
         <DialogActions>
           <Button onClick={() => setProfileOpen(false)}>Cancel</Button>
           <Button variant="contained" color="primary" onClick={handleProfileSave}>

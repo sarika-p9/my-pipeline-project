@@ -1,6 +1,8 @@
 package ports
 
 import (
+	"context"
+
 	"github.com/google/uuid"
 	"github.com/sarika-p9/my-pipeline-project/internal/models"
 )
@@ -15,4 +17,5 @@ type PipelineRepository interface {
 	UpdateUser(userID uuid.UUID, updates map[string]interface{}) error
 	GetPipelinesByUser(userID string) ([]models.Pipelines, error)
 	GetPipelineStages(pipelineID uuid.UUID) ([]models.Stages, error)
+	DeletePipeline(ctx context.Context, pipelineID string) error
 }

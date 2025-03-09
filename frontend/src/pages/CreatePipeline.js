@@ -8,6 +8,8 @@ import RemoveIcon from "@mui/icons-material/Remove";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../pages/Sidebar";
+import CircularProgress from "@mui/material/CircularProgress";
+
 
 
 const isTokenExpired = () => {
@@ -45,6 +47,8 @@ const CreatePipeline = () => {
   const [selectedPipelineId, setSelectedPipelineId] = useState(null);
   const [openStageModal, setOpenStageModal] = useState(false);
   const user_id = getUserIdFromToken();
+  const [loading, setLoading] = useState(false);
+
   
   useEffect(() => {
     if (isTokenExpired()) {
@@ -137,6 +141,7 @@ const CreatePipeline = () => {
     }
   };
 
+
   const fetchPipelineStages = async (pipelineId) => {
     try {
       console.log(`Fetching stages for pipeline: ${pipelineId}`); 
@@ -168,6 +173,23 @@ const CreatePipeline = () => {
       console.error("Failed to update profile", error);
     }
   };
+  
+  const handleDeletePipeline = async (pipelineId) => {
+    if (!window.confirm("Are you sure you want to delete this pipeline?")) return;
+  
+    try {
+      await axios.delete(`http://localhost:8080/api/pipelines/${pipelineId}`);
+      
+      // ✅ Ensure correct key: Filter out deleted pipeline
+      setPipelines(pipelines.filter(pipeline => pipeline.PipelineID !== pipelineId));
+    } catch (error) {
+      console.error("Error deleting pipeline:", error);
+      alert("Failed to delete pipeline.");
+    }
+  };
+  
+  // Show loader while data is being fetched
+  if (loading) return <CircularProgress />;
   
 
 
@@ -215,8 +237,18 @@ const CreatePipeline = () => {
                     >
                       Show Stages
                     </Button>
-                    
                     )}
+                    {/* Delete Button (Only if pipeline is NOT running) */}
+        {pipeline.Status !== "Running" && (
+          <Button
+            variant="contained"
+            color="secondary"
+            sx={{ ml: 2 }}
+            onClick={() => handleDeletePipeline(pipeline.PipelineID)}
+          >
+            Delete
+          </Button>
+        )}
                   </TableCell>
                 </TableRow>
               ))}

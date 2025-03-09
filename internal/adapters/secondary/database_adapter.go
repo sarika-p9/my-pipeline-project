@@ -1,6 +1,8 @@
 package secondary
 
 import (
+	"context"
+
 	"github.com/google/uuid"
 	"github.com/sarika-p9/my-pipeline-project/internal/core/ports"
 	"github.com/sarika-p9/my-pipeline-project/internal/models"
@@ -84,4 +86,13 @@ func (d *DatabaseAdapter) GetPipelineStages(pipelineID uuid.UUID) ([]models.Stag
 		return nil, err
 	}
 	return stages, nil
+}
+
+func (d *DatabaseAdapter) DeletePipeline(ctx context.Context, pipelineID string) error {
+	parsedID, err := uuid.Parse(pipelineID)
+	if err != nil {
+		return err // Return an error if pipelineID is invalid
+	}
+
+	return d.DB.WithContext(ctx).Where("pipeline_id = ?", parsedID).Delete(&models.Pipelines{}).Error
 }

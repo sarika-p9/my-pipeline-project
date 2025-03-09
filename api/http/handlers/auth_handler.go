@@ -99,3 +99,20 @@ func (h *AuthHandler) LogoutHandler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Logout successful"})
 }
+
+func (h *AuthHandler) DeletePipelineHandler(c *gin.Context) {
+	pipelineID := c.Param("pipelineID")
+	if pipelineID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Pipeline ID is required"})
+		return
+	}
+
+	err := h.Service.DeletePipeline(pipelineID)
+	if err != nil {
+		log.Printf("Error deleting pipeline %s: %v", pipelineID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete pipeline"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Pipeline deleted successfully"})
+}

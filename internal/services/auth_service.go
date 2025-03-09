@@ -117,3 +117,18 @@ func (s *AuthService) LogoutUser(token string) error {
 
 	return nil
 }
+
+func (s *AuthService) DeletePipeline(pipelineID string) error {
+	if pipelineID == "" {
+		return errors.New("pipeline ID cannot be empty")
+	}
+
+	err := s.Repo.DeletePipeline(context.Background(), pipelineID)
+	if err != nil {
+		log.Printf("[ERROR] Failed to delete pipeline %s: %v", pipelineID, err)
+		return err
+	}
+
+	log.Printf("[INFO] Pipeline %s deleted successfully", pipelineID)
+	return nil
+}

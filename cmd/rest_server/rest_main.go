@@ -203,6 +203,8 @@ func RESTServer(authService *services.AuthService, pipelineService *services.Pip
 	r.POST("/pipelines/:id/start", authMiddleware, handler.StartPipeline)
 	r.GET("/pipelines/:id/status", authMiddleware, handler.GetPipelineStatus)
 	r.POST("/pipelines/:id/cancel", authMiddleware, handler.CancelPipeline)
+	r.DELETE("/api/pipelines/:pipelineID", authHandler.DeletePipelineHandler)
+
 	log.Println("Starting REST API on port 8080...")
 
 	srv := &http.Server{
