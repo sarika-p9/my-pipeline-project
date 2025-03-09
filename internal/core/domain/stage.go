@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"log"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/sarika-p9/my-pipeline-project/internal/websocket"
 )
 
 type Stage interface {
@@ -16,11 +18,12 @@ type Stage interface {
 }
 
 type BaseStage struct {
-	ID uuid.UUID
+	ID     uuid.UUID
+	Status string
 }
 
 func NewBaseStage() *BaseStage {
-	return &BaseStage{ID: uuid.New()}
+	return &BaseStage{ID: uuid.New(), Status: "Pending"}
 }
 
 func (s *BaseStage) GetID() uuid.UUID {
@@ -28,16 +31,18 @@ func (s *BaseStage) GetID() uuid.UUID {
 }
 
 func (s *BaseStage) Execute(ctx context.Context, input interface{}) (interface{}, error) {
-	log.Printf("Executing stage: %s with input: %v\n", s.ID, input)
+	log.Printf("Executing stage: %s", s.ID)
 
-	// Simulate execution failure for testing error handling
-	if input == nil {
-		err := errors.New("input is nil, stage execution failed")
-		log.Printf("Stage %s execution failed: %v", s.ID, err)
-		return nil, err
-	}
+	// Update status to "Running" and send JSON message
+	s.Status = "Running"
+	websocket.Manager.BroadcastMessage(s.ID.String(), "Running")
 
-	log.Printf("Stage %s executed successfully", s.ID)
+	time.Sleep(5 * time.Second) // Simulating execution
+
+	// Update status to "Completed" and send JSON message
+	s.Status = "Completed"
+	websocket.Manager.BroadcastMessage(s.ID.String(), "Completed")
+
 	return input, nil
 }
 

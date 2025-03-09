@@ -114,6 +114,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net"
 	"net/http"
@@ -121,12 +122,12 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
-
-	"github.com/joho/godotenv"
-	"github.com/nats-io/nats.go"
-	"github.com/streadway/amqp"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
+	"github.com/joho/godotenv"
+	"github.com/nats-io/nats.go"
 	proto "github.com/sarika-p9/my-pipeline-project/api/grpc/proto/authentication"
 	pipeline_proto "github.com/sarika-p9/my-pipeline-project/api/grpc/proto/pipeline"
 	"github.com/sarika-p9/my-pipeline-project/api/http/handlers"
@@ -135,7 +136,9 @@ import (
 	"github.com/sarika-p9/my-pipeline-project/internal/infrastructure"
 	"github.com/sarika-p9/my-pipeline-project/internal/messaging"
 	"github.com/sarika-p9/my-pipeline-project/internal/middleware"
+	"github.com/sarika-p9/my-pipeline-project/internal/routes"
 	"github.com/sarika-p9/my-pipeline-project/internal/services"
+	"github.com/streadway/amqp"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
@@ -145,6 +148,27 @@ var (
 	rabbitMQChannel *amqp.Channel
 	natsConn        *nats.Conn
 )
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool { return true },
+}
+
+func handleWebSocket(c *gin.Context) {
+	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		log.Println("[WebSocket] Upgrade failed:", err)
+		return
+	}
+	defer conn.Close()
+	log.Println("[WebSocket] Client connected")
+
+	for {
+		_, _, err := conn.ReadMessage()
+		if err != nil {
+			log.Println("[WebSocket] Read error:", err)
+			break
+		}
+	}
+}
 
 func RESTServer(authService *services.AuthService, pipelineService *services.PipelineService, wg *sync.WaitGroup) {
 	defer wg.Done()
@@ -167,6 +191,7 @@ func RESTServer(authService *services.AuthService, pipelineService *services.Pip
 		}
 		c.Next()
 	})
+	routes.RegisterRoutes(r)
 	r.POST("/register", gin.WrapF(authHandler.RegisterHandler))
 	r.POST("/login", gin.WrapF(authHandler.LoginHandler))
 	r.POST("/logout", authHandler.LogoutHandler)
@@ -179,10 +204,33 @@ func RESTServer(authService *services.AuthService, pipelineService *services.Pip
 	r.GET("/pipelines/:id/status", authMiddleware, handler.GetPipelineStatus)
 	r.POST("/pipelines/:id/cancel", authMiddleware, handler.CancelPipeline)
 	log.Println("Starting REST API on port 8080...")
-	if err := http.ListenAndServe(":8080", r); err != nil {
-		log.Fatalf("Failed to start REST server: %v", err)
+
+	srv := &http.Server{
+		Addr:    ":8080",
+		Handler: r,
 	}
+
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("ListenAndServe error: %v", err)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+	<-quit
+	log.Println("Received shutdown signal")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatalf("Server forced to shutdown: %v", err)
+	}
+
+	log.Println("Server exited properly")
 }
+
 func GRPCServer(authService *services.AuthService, pipelineService *services.PipelineService, wg *sync.WaitGroup) {
 	defer wg.Done()
 	grpcServer := grpc.NewServer()
@@ -204,7 +252,7 @@ func GRPCServer(authService *services.AuthService, pipelineService *services.Pip
 // func startFrontendServer(wg *sync.WaitGroup) {
 // 	defer wg.Done()
 
-// 	fs := http.FileServer(http.Dir("cmd/api-server/build"))
+// 	fs := http.FileServer(http.Dir("cmd/"))
 // 	http.Handle("/", fs)
 
 // 	log.Println("Starting Frontend server on port 3000...")
