@@ -18,4 +18,5 @@ type PipelineRepository interface {
 	GetPipelinesByUser(userID string) ([]models.Pipelines, error)
 	GetPipelineStages(pipelineID uuid.UUID) ([]models.Stages, error)
 	DeletePipeline(ctx context.Context, pipelineID string) error
+	GetPipelineByID(pipelineID uuid.UUID) (*models.Pipelines, error)
 }

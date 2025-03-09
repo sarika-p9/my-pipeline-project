@@ -36,7 +36,7 @@ const Sidebar = () => {
   const navigate = useNavigate();
 
   return (
-    <Box sx={{ display: "flex", height: "100vh" }}>
+    <Box sx={{ display: "flex", height: "100vh"}}>
       <Drawer
         variant="permanent"
         sx={{
@@ -53,10 +53,10 @@ const Sidebar = () => {
           },
         }}
       >
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.2, mt: 2, width: "90%" }}>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.2, mt: 2, width: "90%", paddingTop: 8 }}>
           {[
-            { label: "User Profile", color: "#082B6F", route: "/user-profile" },
-            { label: "Pipelines", color: "#0D47A1", route: "/create-pipeline" },
+            { label: "User Profile", color: "#0D47A1", route: "/user-profile" },
+            { label: "Pipelines", color: "#1565C0", route: "/create-pipeline" },
            // { label: "Start Execution", color: "#1565C0", route: "/execute-pipeline" },
           //  { label: "Get Status", color: "#1E88E5", route: "/get-status" },
           ].map((item, index) => (

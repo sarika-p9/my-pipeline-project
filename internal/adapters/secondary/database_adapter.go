@@ -57,14 +57,15 @@ func (d *DatabaseAdapter) SaveExecutionLog(logEntry *models.Stages) error {
 func (d *DatabaseAdapter) GetPipelineStatus(pipelineID string) (string, error) {
 	parsedID, err := uuid.Parse(pipelineID)
 	if err != nil {
-		return "", err // Return an error if the pipelineID is invalid
+		return "", err
 	}
 
 	var execution models.Pipelines
 	if err := d.DB.Where("pipeline_id = ?", parsedID).First(&execution).Error; err != nil {
 		return "", err
 	}
-	return execution.Status, nil
+
+	return execution.Status, nil // ✅ Return only status
 }
 
 // ✅ FIX: Accept userID as string and convert to uuid.UUID
@@ -75,7 +76,9 @@ func (d *DatabaseAdapter) GetPipelinesByUser(userID string) ([]models.Pipelines,
 	}
 
 	var pipelines []models.Pipelines
-	err = d.DB.Where("user_id = ?", parsedID).Find(&pipelines).Error
+	err = d.DB.Select("pipeline_id, user_id, status, pipeline_name"). // ✅ Ensure PipelineName is included
+										Where("user_id = ?", parsedID).
+										Find(&pipelines).Error
 	return pipelines, err
 }
 
@@ -95,4 +98,12 @@ func (d *DatabaseAdapter) DeletePipeline(ctx context.Context, pipelineID string)
 	}
 
 	return d.DB.WithContext(ctx).Where("pipeline_id = ?", parsedID).Delete(&models.Pipelines{}).Error
+}
+
+func (d *DatabaseAdapter) GetPipelineByID(pipelineID uuid.UUID) (*models.Pipelines, error) {
+	var pipeline models.Pipelines
+	if err := d.DB.Where("pipeline_id = ?", pipelineID).First(&pipeline).Error; err != nil {
+		return nil, err
+	}
+	return &pipeline, nil
 }

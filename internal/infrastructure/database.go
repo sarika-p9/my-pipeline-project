@@ -1,6 +1,7 @@
 package infrastructure
 
 import (
+	"fmt"
 	"log"
 	"os"
 
@@ -46,15 +47,26 @@ func migrateDatabase() {
 }
 
 func migrateTable(model interface{}) {
-	tableName := DB.Migrator().CurrentDatabase()
+	// Get the table name using GORM's default table naming convention
+	tableName := DB.NamingStrategy.TableName(getTableName(model))
+
 	if DB.Migrator().HasTable(model) {
 		log.Printf("Skipping migration: Table %s already exists.", tableName)
 		return
 	}
+
 	if err := DB.AutoMigrate(model); err != nil {
 		log.Fatalf("Failed to migrate table %s: %v", tableName, err)
 	}
 	log.Printf("Successfully migrated table: %s", tableName)
+}
+
+// Helper function to get the table name
+func getTableName(model interface{}) string {
+	if t, ok := model.(interface{ TableName() string }); ok {
+		return t.TableName()
+	}
+	return fmt.Sprintf("%T", model) // Fallback: use struct name
 }
 
 func GetDB() *gorm.DB {

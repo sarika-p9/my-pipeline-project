@@ -20,13 +20,20 @@ type PipelineServer struct {
 }
 
 // CreatePipeline handles gRPC pipeline creation
+// CreatePipeline handles gRPC pipeline creation
 func (s *PipelineServer) CreatePipeline(ctx context.Context, req *proto.CreatePipelineRequest) (*proto.CreatePipelineResponse, error) {
 	userID, err := uuid.Parse(req.UserId)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "Invalid user ID: %v", err)
 	}
 
-	pipelineID, err := s.Service.CreatePipeline(userID, int(req.Stages))
+	// Ensure pipeline name is passed from the request
+	pipelineName := req.PipelineName
+	if pipelineName == "" {
+		pipelineName = "Untitled Pipeline" // Default if not provided
+	}
+
+	pipelineID, err := s.Service.CreatePipeline(userID, pipelineName, int(req.Stages))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to create pipeline: %v", err)
 	}

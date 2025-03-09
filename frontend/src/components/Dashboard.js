@@ -4,6 +4,7 @@ import {
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../pages/Sidebar";
+import Topbar from "./Topbar";
 
 
 const isTokenExpired = () => {
@@ -56,14 +57,10 @@ const Dashboard = () => {
   };
 
   return (
-    <Box sx={{ display: "flex" }}> 
+    <Box sx={{ display: "flex", paddingTop: 5, paddingLeft: 3 }}> 
+     <Topbar />
     <Sidebar />  
     <Container maxWidth="md">
-      {/* <AppBar position="static">
-        <Toolbar sx={{ display: "flex", justifyContent: "space-between" }}>
-          <Typography variant="h6">Dashboard</Typography>
-        </Toolbar>
-      </AppBar> */}
       <Box sx={{ textAlign: "center", mt: 5, p: 4, boxShadow: 3, borderRadius: 2 }}>
         <Typography variant="h4">Welcome, {user.name || "User"}</Typography>
       </Box>

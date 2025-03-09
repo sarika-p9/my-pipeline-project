@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from "react
 import { TextField, Button, Select, MenuItem, Typography, Container, Box, AppBar, Toolbar } from "@mui/material";
 import axios from "axios";
 import Dashboard from "./Dashboard";
+import Topbar from "./Topbar";
 
 const decodeToken = (token) => {
   try {
@@ -32,8 +33,8 @@ const checkSession = (navigate) => {
 
 const AuthLayout = ({ children, title }) => {
   return (
-    <Container maxWidth="sm">
-      <Box sx={{ textAlign: "center", mt: 5, p: 4, boxShadow: 3, borderRadius: 2 }}>
+    <Container sx={{maxWidth: "sm", paddingTop: 8}}>
+      <Box sx={{ textAlign: "center", mt: 5, p: 4, boxShadow: 3, borderRadius: 2, paddingTop: 4 }}>
         <Typography variant="h4" sx={{ mb: 2 }}>{title}</Typography>
         {children}
       </Box>
@@ -129,11 +130,7 @@ const App = () => {
 
   return (
     <Router>
-      <AppBar position="static">
-        <Toolbar sx={{ display: "flex", justifyContent: "space-between" }}>
-          <Typography variant="h6">Distributed Manufacturing System</Typography>
-        </Toolbar>
-      </AppBar>
+      <Topbar />
       <Routes>
         <Route path="/register" element={<RegisterPage apiType={apiType} />} />
         <Route path="/login" element={<LoginPage apiType={apiType} />} />

@@ -19,6 +19,7 @@ message CreatePipelineRequest {
     int32 stages = 1;
     bool is_parallel = 2;
     string user_id = 3;  // Changed from UUID to string
+    string pipeline_name = 4;  // Optional, defaults to "Untitled Pipeline" if empty
 }
 
 message CreatePipelineResponse {

@@ -26,7 +26,7 @@ func NewPipelineService(repo ports.PipelineRepository) *PipelineService {
 	}
 }
 
-func (ps *PipelineService) CreatePipeline(userID uuid.UUID, stageCount int) (uuid.UUID, error) {
+func (ps *PipelineService) CreatePipeline(userID uuid.UUID, name string, stageCount int) (uuid.UUID, error) {
 	pipelineID := uuid.New()
 
 	ps.mu.Lock()
@@ -43,11 +43,12 @@ func (ps *PipelineService) CreatePipeline(userID uuid.UUID, stageCount int) (uui
 	}
 
 	err := ps.Repository.SavePipelineExecution(&models.Pipelines{
-		PipelineID: pipelineID,
-		UserID:     userID,
-		Status:     "Created",
-		CreatedAt:  time.Now(),
-		UpdatedAt:  time.Now(),
+		PipelineID:   pipelineID,
+		UserID:       userID,
+		PipelineName: name, // ✅ Store pipeline name
+		Status:       "Created",
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
 	})
 	if err != nil {
 		return uuid.Nil, err

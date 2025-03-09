@@ -21,6 +21,7 @@ type Pipelines struct {
 	PipelineID    uuid.UUID `gorm:"type:uuid;default:uuid_generate_v4();primaryKey"`
 	UserID        uuid.UUID `gorm:"type:uuid;not null;index"`
 	Status        string    `gorm:"type:varchar(50);not null"`
+	PipelineName  string    `gorm:"type:varchar(255);not null;default:'Untitled Pipeline'"`
 	CreatedAt     time.Time `gorm:"autoCreateTime"`
 	UpdatedAt     time.Time `gorm:"autoUpdateTime"`
 	ExecutionLogs []Stages  `gorm:"foreignKey:PipelineID;constraint:OnDelete:CASCADE;"`

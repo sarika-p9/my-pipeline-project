@@ -48,6 +48,8 @@ const CreatePipeline = () => {
   const [openStageModal, setOpenStageModal] = useState(false);
   const user_id = getUserIdFromToken();
   const [loading, setLoading] = useState(false);
+  const [pipelineName, setPipelineName] = useState("");
+
 
   
   useEffect(() => {
@@ -102,6 +104,7 @@ const CreatePipeline = () => {
   const handleCreatePipeline = async () => {
     try {
       await authAxios.post("/createpipelines", {
+        name: pipelineName,  // ✅ Added Name
         stages: pipelineStages,
         is_parallel: isParallel,
         user_id: user_id,
@@ -111,6 +114,7 @@ const CreatePipeline = () => {
       console.error("Failed to create pipeline", error);
     }
   };
+  
 
   const handlePipelineAction = async (pipelineId, status) => {
     try {
@@ -205,6 +209,7 @@ const CreatePipeline = () => {
             <TableHead>
               <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
                 <TableCell><strong>Pipeline ID</strong></TableCell>
+                <TableCell><strong>Pipeline Name</strong></TableCell>
                 <TableCell><strong>Status</strong></TableCell>
                 <TableCell><strong>Actions</strong></TableCell>
               </TableRow>
@@ -213,6 +218,7 @@ const CreatePipeline = () => {
               {pipelines.map((pipeline) => (
                 <TableRow key={pipeline.PipelineID}>
                   <TableCell>{pipeline.PipelineID}</TableCell>
+                  <TableCell>{pipeline.PipelineName}</TableCell>  
                   <TableCell>
                     <Typography sx={{ fontWeight: "bold", color: pipeline.Status === "Running" ? "green" : "gray" }}>
                       {pipeline.Status}
@@ -303,25 +309,49 @@ const CreatePipeline = () => {
 
 
 
-    <Box sx={{ mt: 5, p: 3, boxShadow: 3, borderRadius: 2 }}>
+      <Box sx={{ mt: 5, p: 3, boxShadow: 3, borderRadius: 2 }}>
       <Typography variant="h5" sx={{ mb: 2 }}>Create New Pipeline</Typography>
 
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 3, mt: 2 }}>
-        <Typography variant="h6" sx={{ minWidth: 150, textAlign: "right" }}>Number of Stages:</Typography>
-        <IconButton onClick={() => setPipelineStages(Math.max(1, pipelineStages - 1))}>
-          <RemoveIcon />
-        </IconButton>
-        <Typography variant="h6">{pipelineStages}</Typography>
-        <IconButton onClick={() => setPipelineStages(pipelineStages + 1)}>
-          <AddIcon />
-        </IconButton>
+      {/* Pipeline Name Input */}
+      <Box sx={{ display: "flex", alignItems: "center", gap: 3, mt: 2 }}>
+        <Typography variant="h6" sx={{ minWidth: 150, textAlign: "right" }}>Pipeline Name:</Typography>
+        <TextField
+          variant="outlined"
+          value={pipelineName}
+          onChange={(e) => setPipelineName(e.target.value)}
+          placeholder="Enter pipeline name"
+          sx={{ flexGrow: 1 }}
+        />
       </Box>
 
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 3, mt: 3 }}>
-        
-        <Button variant="contained" color="secondary" sx={{ px: 3, py: 1.2 }} onClick={handleCreatePipeline}>
-          Create Pipeline
-        </Button> 
+      {/* Dropdown for Number of Stages */}
+      <Box sx={{ display: "flex", alignItems: "center", gap: 3, mt: 3 }}>
+        <Typography variant="h6" sx={{ minWidth: 150, textAlign: "right" }}>Number of Stages:</Typography>
+        <TextField
+          select
+          value={pipelineStages}
+          onChange={(e) => setPipelineStages(e.target.value)}
+          sx={{ width: 80 }}
+        >
+          {[...Array(10).keys()].map((num) => (
+            <MenuItem key={num + 1} value={num + 1}>
+              {num + 1}
+            </MenuItem>
+          ))}
+        </TextField>
+      </Box>
+
+      {/* Create Pipeline Button */}
+      <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
+        <Button
+          variant="contained"
+          color="secondary"
+          sx={{ px: 3, py: 1.2 }}
+          onClick={handleCreatePipeline}
+          disabled={!pipelineName.trim() || loading}
+        >
+          {loading ? "Creating..." : "Create Pipeline"}
+        </Button>
       </Box>
     </Box>
     </Container>

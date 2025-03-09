@@ -53,10 +53,17 @@ func (p *ParallelPipelineOrchestrator) Execute(ctx context.Context, userID uuid.
 	}
 
 	// ✅ Step 2: Update pipeline execution status instead of inserting a new record
+	pipeline, err := p.dbRepo.GetPipelineByID(pipelineID)
+	if err != nil {
+		log.Printf("Failed to fetch pipeline details: %v", err)
+		return pipelineID, nil, err
+	}
+
 	if err := p.dbRepo.UpdatePipelineExecution(&models.Pipelines{
-		PipelineID: pipelineID,
-		Status:     "Running",
-		UpdatedAt:  time.Now(),
+		PipelineID:   pipelineID,
+		PipelineName: pipeline.PipelineName, // ✅ Ensure the name is included
+		Status:       "Running",
+		UpdatedAt:    time.Now(),
 	}); err != nil {
 		log.Printf("Failed to update pipeline execution status: %v", err)
 		return pipelineID, nil, err
@@ -72,8 +79,7 @@ func (p *ParallelPipelineOrchestrator) Execute(ctx context.Context, userID uuid.
 		wg.Add(1)
 		go func(stage Stage) {
 			defer wg.Done()
-			result, err := stage.Execute(ctx, input)
-
+			result, err := stage.Execute(ctx, pipeline.PipelineName, input)
 			logEntry := &models.Stages{
 				StageID:    stage.GetID(),
 				PipelineID: pipelineID,
@@ -103,21 +109,19 @@ func (p *ParallelPipelineOrchestrator) Execute(ctx context.Context, userID uuid.
 	wg.Wait()
 
 	// ✅ Step 4: Update pipeline execution status in DB based on results
+	// ✅ Step 4: Update pipeline execution status in DB based on results
 	finalStatus := "Completed"
 	if len(errorsSlice) > 0 {
 		finalStatus = "Failed"
 	}
 
 	if err := p.dbRepo.UpdatePipelineExecution(&models.Pipelines{
-		PipelineID: pipelineID,
-		Status:     finalStatus,
-		UpdatedAt:  time.Now(),
+		PipelineID:   pipelineID,
+		PipelineName: pipeline.PipelineName, // ✅ Ensure name persists
+		Status:       finalStatus,
+		UpdatedAt:    time.Now(),
 	}); err != nil {
 		log.Printf("Failed to update final pipeline execution status: %v", err)
-	}
-
-	if len(results) == 0 {
-		return pipelineID, nil, errors.New("no valid results from pipeline stages")
 	}
 
 	return pipelineID, results, nil

@@ -15,9 +15,10 @@ type PipelineHandler struct {
 }
 
 type CreatePipelineRequest struct {
-	Stages     int       `json:"stages"`
-	IsParallel bool      `json:"is_parallel"`
-	UserID     uuid.UUID `json:"user_id"` // Extracted from the request
+	Name       string `json:"name"`
+	Stages     int    `json:"stages"`
+	IsParallel bool   `json:"is_parallel"` // Default to true
+	UserID     string `json:"user_id"`
 }
 
 // CreatePipeline handles pipeline creation
@@ -28,29 +29,44 @@ func (h *PipelineHandler) CreatePipeline(c *gin.Context) {
 		return
 	}
 
-	if req.UserID == uuid.Nil {
+	if req.UserID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "User ID is required"})
 		return
 	}
 
-	pipelineID, err := h.Service.CreatePipeline(req.UserID, req.Stages)
+	// Default is_parallel to true if not provided
+	if !c.Request.URL.Query().Has("is_parallel") {
+		req.IsParallel = true
+	}
+
+	// Convert UserID (string) to uuid.UUID
+	userUUID, err := uuid.Parse(req.UserID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID format"})
+		return
+	}
+
+	// Call CreatePipeline with correct arguments (uuid.UUID, string, int)
+	pipelineID, err := h.Service.CreatePipeline(userUUID, req.Name, req.Stages)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create pipeline"})
 		return
 	}
 
-	c.JSON(http.StatusAccepted, gin.H{"message": "Pipeline created", "pipeline_id": pipelineID})
+	c.JSON(http.StatusAccepted, gin.H{
+		"message":     "Pipeline created",
+		"pipeline_id": pipelineID.String(),
+	})
 }
 
 type StartPipelineRequest struct {
 	Input      interface{} `json:"input"`
 	IsParallel bool        `json:"is_parallel"`
-	UserID     uuid.UUID   `json:"user_id"`
+	UserID     string      `json:"user_id"` // Change from uuid.UUID to string
 }
 
-// StartPipeline handles pipeline execution
 func (h *PipelineHandler) StartPipeline(c *gin.Context) {
-	pipelineID, err := uuid.Parse(c.Param("id"))
+	pipelineID, err := uuid.Parse(c.Param("id")) // Ensure pipelineID is converted to uuid.UUID
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid pipeline ID"})
 		return
@@ -62,13 +78,15 @@ func (h *PipelineHandler) StartPipeline(c *gin.Context) {
 		return
 	}
 
-	if req.UserID == uuid.Nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "User ID is required"})
+	// Convert UserID from string to uuid.UUID
+	userID, err := uuid.Parse(req.UserID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
 		return
 	}
 
 	go func() {
-		h.Service.StartPipeline(context.Background(), req.UserID, pipelineID, req.Input)
+		h.Service.StartPipeline(context.Background(), userID, pipelineID, req.Input)
 	}()
 
 	c.JSON(http.StatusAccepted, gin.H{"message": "Pipeline execution started", "pipeline_id": pipelineID})
@@ -109,12 +127,13 @@ func (h *PipelineHandler) GetPipelineStatus(c *gin.Context) {
 }
 
 type CancelPipelineRequest struct {
-	IsParallel bool      `json:"is_parallel"`
-	UserID     uuid.UUID `json:"user_id"`
+	IsParallel bool   `json:"is_parallel"`
+	UserID     string `json:"user_id"`
 }
 
 // CancelPipeline cancels an ongoing pipeline execution
 func (h *PipelineHandler) CancelPipeline(c *gin.Context) {
+	// Convert pipelineID from string to uuid.UUID
 	pipelineID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid pipeline ID"})
@@ -127,12 +146,15 @@ func (h *PipelineHandler) CancelPipeline(c *gin.Context) {
 		return
 	}
 
-	if req.UserID == uuid.Nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "User ID is required"})
+	// Convert req.UserID from string to uuid.UUID
+	userID, err := uuid.Parse(req.UserID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
 		return
 	}
 
-	err = h.Service.CancelPipeline(pipelineID, req.UserID)
+	// Pass converted uuid.UUID values to CancelPipeline service
+	err = h.Service.CancelPipeline(pipelineID, userID)
 	if err != nil {
 		log.Printf("Error cancelling pipeline: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to cancel pipeline"})

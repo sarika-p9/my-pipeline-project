@@ -12,7 +12,7 @@ import (
 
 type Stage interface {
 	GetID() uuid.UUID
-	Execute(ctx context.Context, input interface{}) (interface{}, error)
+	Execute(ctx context.Context, pipelineName string, input interface{}) (interface{}, error)
 	HandleError(ctx context.Context, err error) error
 	Rollback(ctx context.Context, input interface{}) error
 }
@@ -30,18 +30,18 @@ func (s *BaseStage) GetID() uuid.UUID {
 	return s.ID
 }
 
-func (s *BaseStage) Execute(ctx context.Context, input interface{}) (interface{}, error) {
-	log.Printf("Executing stage: %s", s.ID)
+func (s *BaseStage) Execute(ctx context.Context, pipelineName string, input interface{}) (interface{}, error) {
+	log.Printf("Executing stage: %s for pipeline: %s", s.ID, pipelineName)
 
-	// Update status to "Running" and send JSON message
+	// Update status to "Running" and send JSON message with pipelineName
 	s.Status = "Running"
-	websocket.Manager.BroadcastMessage(s.ID.String(), "Running")
+	websocket.Manager.BroadcastMessage(pipelineName+" - "+s.ID.String(), "Running") // ✅ Include pipelineName
 
 	time.Sleep(5 * time.Second) // Simulating execution
 
-	// Update status to "Completed" and send JSON message
+	// Update status to "Completed" and send JSON message with pipelineName
 	s.Status = "Completed"
-	websocket.Manager.BroadcastMessage(s.ID.String(), "Completed")
+	websocket.Manager.BroadcastMessage(pipelineName+" - "+s.ID.String(), "Completed") // ✅ Include pipelineName
 
 	return input, nil
 }
