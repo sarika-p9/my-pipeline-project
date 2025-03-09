@@ -57,15 +57,38 @@ const Dashboard = () => {
   };
 
   return (
-    <Box sx={{ display: "flex", paddingTop: 5, paddingLeft: 3 }}> 
-     <Topbar />
-    <Sidebar />  
-    <Container maxWidth="md">
-      <Box sx={{ textAlign: "center", mt: 5, p: 4, boxShadow: 3, borderRadius: 2 }}>
-        <Typography variant="h4">Welcome, {user.name || "User"}</Typography>
-      </Box>
-    </Container>
+    <Box
+    sx={{
+      width: "100vw",
+      height: "100vh",
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: "#42A5F5",
+    }}
+  >
+    <Box sx={{ display: "flex", paddingTop: 70, paddingLeft: 3 }}>
+      <Topbar />
+      <Sidebar />
+      <Container sx={{ maxWidth: "md" }}>
+        <Box
+          sx={{
+            backgroundColor: "#FFFFFF", // White background
+            textAlign: "center",
+            mt: 5,
+            p: 4,
+            boxShadow: 3,
+            borderRadius: 2,
+          }}
+        >
+          <Typography variant="h4" sx={{ color: "#082B6F" }}> 
+            Welcome, {user.name || "User"}
+          </Typography>
+        </Box>
+      </Container>
     </Box>
+  </Box>
+  
   );
 };
 

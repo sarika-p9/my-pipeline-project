@@ -86,7 +86,7 @@ const Sidebar = () => {
         <Box sx={{ width: "90%", mb: 3, paddingBottom: 1 }}>
           <Card
             sx={{
-              backgroundColor: "#42A5F5",
+              backgroundColor: "#1E88E5",
               color: "white",
               p: 1,
               borderRadius: 3,

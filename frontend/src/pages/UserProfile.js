@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { Box, Button, Typography, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Select, MenuItem, FormControl, InputLabel } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import Topbar from "../components/Topbar";
+import Sidebar from "./Sidebar";
 
 const isTokenExpired = () => {
   const token = localStorage.getItem("token");
@@ -95,24 +97,33 @@ const UserProfile = () => {
   };
 
   return (
-    <Box sx={{
-      p: 3,
-      minHeight: "90vh",
+   
+    <Box
+    sx={{
+      width: "100vw",
+      height: "100vh",
       display: "flex",
-      backgroundColor: "#42A5F5", 
       justifyContent: "center",
       alignItems: "center",
-      flexDirection: "column",
-      position: "relative",
-    }}>
+      backgroundColor: "#42A5F5",
+    }}
+  >
+  
+       <Topbar />
+       <Sidebar />  
       
-      <Box sx={{
-        backgroundColor: "#FFFFFF",
-        padding: 4,
-        borderRadius: 2,
-        boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.1)",
-        textAlign: "center",
-      }}>
+       <Box
+    sx={{
+      backgroundColor: "#FFFFFF",
+      padding: 4,
+      borderRadius: 2,
+      boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.1)",
+      textAlign: "center",
+      minWidth: "300px",
+      maxWidth: "80vw",
+      paddingBottom: "50px", // Corrected unit
+    }}
+  >
         <Typography variant="h4" gutterBottom>
           User Profile
         </Typography>

@@ -9,7 +9,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../pages/Sidebar";
 import CircularProgress from "@mui/material/CircularProgress";
-
+import Topbar from "../components/Topbar";
 
 
 const isTokenExpired = () => {
@@ -199,6 +199,7 @@ const CreatePipeline = () => {
 
   return (
     <Box sx={{ display: "flex" }}> 
+    <Topbar/>
     <Sidebar />  
     <Container maxWidth="md">
     
@@ -208,8 +209,8 @@ const CreatePipeline = () => {
           <Table sx={{ minWidth: 500, border: "1px solid #ccc", borderRadius: "8px" }}>
             <TableHead>
               <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+              <TableCell><strong>Pipeline Name</strong></TableCell>
                 <TableCell><strong>Pipeline ID</strong></TableCell>
-                <TableCell><strong>Pipeline Name</strong></TableCell>
                 <TableCell><strong>Status</strong></TableCell>
                 <TableCell><strong>Actions</strong></TableCell>
               </TableRow>
@@ -217,8 +218,9 @@ const CreatePipeline = () => {
             <TableBody>
               {pipelines.map((pipeline) => (
                 <TableRow key={pipeline.PipelineID}>
+                   <TableCell>{pipeline.PipelineName}</TableCell> 
                   <TableCell>{pipeline.PipelineID}</TableCell>
-                  <TableCell>{pipeline.PipelineName}</TableCell>  
+                  
                   <TableCell>
                     <Typography sx={{ fontWeight: "bold", color: pipeline.Status === "Running" ? "green" : "gray" }}>
                       {pipeline.Status}
@@ -294,22 +296,9 @@ const CreatePipeline = () => {
 </Dialog>
 
 
-<Dialog open={profileOpen} onClose={() => setProfileOpen(false)}>
-        <DialogTitle>Edit Profile</DialogTitle>
-        <DialogContent>
-          <TextField label="Name" fullWidth margin="normal" value={user.name} onChange={(e) => setUser({ ...user, name: e.target.value })} />
-          <TextField label="Role" fullWidth margin="normal" value={user.role} onChange={(e) => setUser({ ...user, role: e.target.value })} />
-          <TextField label="Email" fullWidth margin="normal" value={user.email} disabled />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setProfileOpen(false)}>Cancel</Button>
-          <Button onClick={handleProfileSave} color="primary">Save</Button>
-        </DialogActions>
-      </Dialog>
 
 
-
-      <Box sx={{ mt: 5, p: 3, boxShadow: 3, borderRadius: 2 }}>
+      <Box sx={{ mt: 5, p: 3, boxShadow: 3, borderRadius: 2}}>
       <Typography variant="h5" sx={{ mb: 2 }}>Create New Pipeline</Typography>
 
       {/* Pipeline Name Input */}
