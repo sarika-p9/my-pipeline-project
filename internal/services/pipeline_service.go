@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -26,7 +27,7 @@ func NewPipelineService(repo ports.PipelineRepository) *PipelineService {
 	}
 }
 
-func (ps *PipelineService) CreatePipeline(userID uuid.UUID, name string, stageCount int) (uuid.UUID, error) {
+func (ps *PipelineService) CreatePipeline(userID uuid.UUID, name string, stageCount int, stageNames []string) (uuid.UUID, error) {
 	pipelineID := uuid.New()
 
 	ps.mu.Lock()
@@ -35,8 +36,10 @@ func (ps *PipelineService) CreatePipeline(userID uuid.UUID, name string, stageCo
 	ps.mu.Unlock()
 
 	for i := 0; i < stageCount; i++ {
-		stage := domain.NewBaseStage()
-		log.Printf("Adding Stage: %s to Pipeline: %s", stage.GetID(), pipelineID) // Debugging log
+		stageName := fmt.Sprintf("Stage-%d", i+1) // ✅ Assign a stage name
+		stage := domain.NewBaseStage(stageName)   // ✅ Ensure this function exists in your domain layer
+
+		log.Printf("Adding Stage: %s (Name: %s) to Pipeline: %s", stage.GetID(), stageName, pipelineID) // Debugging log
 		if err := orchestrator.AddStage(stage); err != nil {
 			return uuid.Nil, err
 		}

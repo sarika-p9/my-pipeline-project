@@ -12,6 +12,7 @@ import (
 
 type Stage interface {
 	GetID() uuid.UUID
+	GetName() string
 	Execute(ctx context.Context, pipelineName string, input interface{}) (interface{}, error)
 	HandleError(ctx context.Context, err error) error
 	Rollback(ctx context.Context, input interface{}) error
@@ -19,39 +20,44 @@ type Stage interface {
 
 type BaseStage struct {
 	ID     uuid.UUID
+	Name   string
 	Status string
 }
 
-func NewBaseStage() *BaseStage {
-	return &BaseStage{ID: uuid.New(), Status: "Pending"}
+func NewBaseStage(name string) *BaseStage {
+	return &BaseStage{ID: uuid.New(), Name: name, Status: "Pending"}
 }
 
 func (s *BaseStage) GetID() uuid.UUID {
 	return s.ID
 }
 
-func (s *BaseStage) Execute(ctx context.Context, pipelineName string, input interface{}) (interface{}, error) {
-	log.Printf("Executing stage: %s for pipeline: %s", s.ID, pipelineName)
+func (s *BaseStage) GetName() string {
+	return s.Name
+}
 
-	// Update status to "Running" and send JSON message with pipelineName
+func (s *BaseStage) Execute(ctx context.Context, pipelineName string, input interface{}) (interface{}, error) {
+	log.Printf("Executing stage: %s (%s) for pipeline: %s", s.Name, s.ID, pipelineName)
+
+	// Update status to "Running" and send JSON message with pipelineName and stage name
 	s.Status = "Running"
-	websocket.Manager.BroadcastMessage(pipelineName+" - "+s.ID.String(), "Running") // ✅ Include pipelineName
+	websocket.Manager.BroadcastMessage(pipelineName+" - "+s.Name, "Running")
 
 	time.Sleep(5 * time.Second) // Simulating execution
 
-	// Update status to "Completed" and send JSON message with pipelineName
+	// Update status to "Completed" and send JSON message with pipelineName and stage name
 	s.Status = "Completed"
-	websocket.Manager.BroadcastMessage(pipelineName+" - "+s.ID.String(), "Completed") // ✅ Include pipelineName
+	websocket.Manager.BroadcastMessage(pipelineName+" - "+s.Name, "Completed")
 
 	return input, nil
 }
 
 func (s *BaseStage) HandleError(ctx context.Context, err error) error {
-	log.Printf("Error in stage %s execution: %v", s.ID, err)
+	log.Printf("Error in stage %s (%s) execution: %v", s.Name, s.ID, err)
 	return errors.New("stage execution failed: " + err.Error())
 }
 
 func (s *BaseStage) Rollback(ctx context.Context, input interface{}) error {
-	log.Printf("Rolling back stage %s due to failure. Input: %v", s.ID, input)
+	log.Printf("Rolling back stage %s (%s) due to failure. Input: %v", s.Name, s.ID, input)
 	return nil
 }

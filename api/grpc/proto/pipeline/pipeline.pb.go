@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.5
 // 	protoc        v5.29.3
-// source: pipeline/pipeline.proto
+// source: api/grpc/proto/pipeline/pipeline.proto
 
 package pipeline
 
@@ -29,13 +29,14 @@ type CreatePipelineRequest struct {
 	IsParallel    bool                   `protobuf:"varint,2,opt,name=is_parallel,json=isParallel,proto3" json:"is_parallel,omitempty"`
 	UserId        string                 `protobuf:"bytes,3,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`                   // Changed from UUID to string
 	PipelineName  string                 `protobuf:"bytes,4,opt,name=pipeline_name,json=pipelineName,proto3" json:"pipeline_name,omitempty"` // Optional, defaults to "Untitled Pipeline" if empty
+	StageNames    []string               `protobuf:"bytes,5,rep,name=stage_names,json=stageNames,proto3" json:"stage_names,omitempty"`       // New field for stage names
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CreatePipelineRequest) Reset() {
 	*x = CreatePipelineRequest{}
-	mi := &file_pipeline_pipeline_proto_msgTypes[0]
+	mi := &file_api_grpc_proto_pipeline_pipeline_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -47,7 +48,7 @@ func (x *CreatePipelineRequest) String() string {
 func (*CreatePipelineRequest) ProtoMessage() {}
 
 func (x *CreatePipelineRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pipeline_pipeline_proto_msgTypes[0]
+	mi := &file_api_grpc_proto_pipeline_pipeline_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -60,7 +61,7 @@ func (x *CreatePipelineRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreatePipelineRequest.ProtoReflect.Descriptor instead.
 func (*CreatePipelineRequest) Descriptor() ([]byte, []int) {
-	return file_pipeline_pipeline_proto_rawDescGZIP(), []int{0}
+	return file_api_grpc_proto_pipeline_pipeline_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *CreatePipelineRequest) GetStages() int32 {
@@ -91,6 +92,13 @@ func (x *CreatePipelineRequest) GetPipelineName() string {
 	return ""
 }
 
+func (x *CreatePipelineRequest) GetStageNames() []string {
+	if x != nil {
+		return x.StageNames
+	}
+	return nil
+}
+
 type CreatePipelineResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	PipelineId    string                 `protobuf:"bytes,1,opt,name=pipeline_id,json=pipelineId,proto3" json:"pipeline_id,omitempty"`
@@ -100,7 +108,7 @@ type CreatePipelineResponse struct {
 
 func (x *CreatePipelineResponse) Reset() {
 	*x = CreatePipelineResponse{}
-	mi := &file_pipeline_pipeline_proto_msgTypes[1]
+	mi := &file_api_grpc_proto_pipeline_pipeline_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -112,7 +120,7 @@ func (x *CreatePipelineResponse) String() string {
 func (*CreatePipelineResponse) ProtoMessage() {}
 
 func (x *CreatePipelineResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pipeline_pipeline_proto_msgTypes[1]
+	mi := &file_api_grpc_proto_pipeline_pipeline_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -125,7 +133,7 @@ func (x *CreatePipelineResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreatePipelineResponse.ProtoReflect.Descriptor instead.
 func (*CreatePipelineResponse) Descriptor() ([]byte, []int) {
-	return file_pipeline_pipeline_proto_rawDescGZIP(), []int{1}
+	return file_api_grpc_proto_pipeline_pipeline_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *CreatePipelineResponse) GetPipelineId() string {
@@ -147,7 +155,7 @@ type StartPipelineRequest struct {
 
 func (x *StartPipelineRequest) Reset() {
 	*x = StartPipelineRequest{}
-	mi := &file_pipeline_pipeline_proto_msgTypes[2]
+	mi := &file_api_grpc_proto_pipeline_pipeline_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -159,7 +167,7 @@ func (x *StartPipelineRequest) String() string {
 func (*StartPipelineRequest) ProtoMessage() {}
 
 func (x *StartPipelineRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pipeline_pipeline_proto_msgTypes[2]
+	mi := &file_api_grpc_proto_pipeline_pipeline_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -172,7 +180,7 @@ func (x *StartPipelineRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartPipelineRequest.ProtoReflect.Descriptor instead.
 func (*StartPipelineRequest) Descriptor() ([]byte, []int) {
-	return file_pipeline_pipeline_proto_rawDescGZIP(), []int{2}
+	return file_api_grpc_proto_pipeline_pipeline_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *StartPipelineRequest) GetPipelineId() string {
@@ -212,7 +220,7 @@ type StartPipelineResponse struct {
 
 func (x *StartPipelineResponse) Reset() {
 	*x = StartPipelineResponse{}
-	mi := &file_pipeline_pipeline_proto_msgTypes[3]
+	mi := &file_api_grpc_proto_pipeline_pipeline_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -224,7 +232,7 @@ func (x *StartPipelineResponse) String() string {
 func (*StartPipelineResponse) ProtoMessage() {}
 
 func (x *StartPipelineResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pipeline_pipeline_proto_msgTypes[3]
+	mi := &file_api_grpc_proto_pipeline_pipeline_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -237,7 +245,7 @@ func (x *StartPipelineResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartPipelineResponse.ProtoReflect.Descriptor instead.
 func (*StartPipelineResponse) Descriptor() ([]byte, []int) {
-	return file_pipeline_pipeline_proto_rawDescGZIP(), []int{3}
+	return file_api_grpc_proto_pipeline_pipeline_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *StartPipelineResponse) GetMessage() string {
@@ -257,7 +265,7 @@ type GetPipelineStatusRequest struct {
 
 func (x *GetPipelineStatusRequest) Reset() {
 	*x = GetPipelineStatusRequest{}
-	mi := &file_pipeline_pipeline_proto_msgTypes[4]
+	mi := &file_api_grpc_proto_pipeline_pipeline_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -269,7 +277,7 @@ func (x *GetPipelineStatusRequest) String() string {
 func (*GetPipelineStatusRequest) ProtoMessage() {}
 
 func (x *GetPipelineStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pipeline_pipeline_proto_msgTypes[4]
+	mi := &file_api_grpc_proto_pipeline_pipeline_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -282,7 +290,7 @@ func (x *GetPipelineStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPipelineStatusRequest.ProtoReflect.Descriptor instead.
 func (*GetPipelineStatusRequest) Descriptor() ([]byte, []int) {
-	return file_pipeline_pipeline_proto_rawDescGZIP(), []int{4}
+	return file_api_grpc_proto_pipeline_pipeline_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *GetPipelineStatusRequest) GetPipelineId() string {
@@ -309,7 +317,7 @@ type GetPipelineStatusResponse struct {
 
 func (x *GetPipelineStatusResponse) Reset() {
 	*x = GetPipelineStatusResponse{}
-	mi := &file_pipeline_pipeline_proto_msgTypes[5]
+	mi := &file_api_grpc_proto_pipeline_pipeline_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -321,7 +329,7 @@ func (x *GetPipelineStatusResponse) String() string {
 func (*GetPipelineStatusResponse) ProtoMessage() {}
 
 func (x *GetPipelineStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pipeline_pipeline_proto_msgTypes[5]
+	mi := &file_api_grpc_proto_pipeline_pipeline_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -334,7 +342,7 @@ func (x *GetPipelineStatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPipelineStatusResponse.ProtoReflect.Descriptor instead.
 func (*GetPipelineStatusResponse) Descriptor() ([]byte, []int) {
-	return file_pipeline_pipeline_proto_rawDescGZIP(), []int{5}
+	return file_api_grpc_proto_pipeline_pipeline_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *GetPipelineStatusResponse) GetPipelineId() string {
@@ -362,7 +370,7 @@ type CancelPipelineRequest struct {
 
 func (x *CancelPipelineRequest) Reset() {
 	*x = CancelPipelineRequest{}
-	mi := &file_pipeline_pipeline_proto_msgTypes[6]
+	mi := &file_api_grpc_proto_pipeline_pipeline_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -374,7 +382,7 @@ func (x *CancelPipelineRequest) String() string {
 func (*CancelPipelineRequest) ProtoMessage() {}
 
 func (x *CancelPipelineRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pipeline_pipeline_proto_msgTypes[6]
+	mi := &file_api_grpc_proto_pipeline_pipeline_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -387,7 +395,7 @@ func (x *CancelPipelineRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancelPipelineRequest.ProtoReflect.Descriptor instead.
 func (*CancelPipelineRequest) Descriptor() ([]byte, []int) {
-	return file_pipeline_pipeline_proto_rawDescGZIP(), []int{6}
+	return file_api_grpc_proto_pipeline_pipeline_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *CancelPipelineRequest) GetPipelineId() string {
@@ -420,7 +428,7 @@ type CancelPipelineResponse struct {
 
 func (x *CancelPipelineResponse) Reset() {
 	*x = CancelPipelineResponse{}
-	mi := &file_pipeline_pipeline_proto_msgTypes[7]
+	mi := &file_api_grpc_proto_pipeline_pipeline_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -432,7 +440,7 @@ func (x *CancelPipelineResponse) String() string {
 func (*CancelPipelineResponse) ProtoMessage() {}
 
 func (x *CancelPipelineResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pipeline_pipeline_proto_msgTypes[7]
+	mi := &file_api_grpc_proto_pipeline_pipeline_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -445,7 +453,7 @@ func (x *CancelPipelineResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancelPipelineResponse.ProtoReflect.Descriptor instead.
 func (*CancelPipelineResponse) Descriptor() ([]byte, []int) {
-	return file_pipeline_pipeline_proto_rawDescGZIP(), []int{7}
+	return file_api_grpc_proto_pipeline_pipeline_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *CancelPipelineResponse) GetMessage() string {
@@ -455,22 +463,25 @@ func (x *CancelPipelineResponse) GetMessage() string {
 	return ""
 }
 
-var File_pipeline_pipeline_proto protoreflect.FileDescriptor
+var File_api_grpc_proto_pipeline_pipeline_proto protoreflect.FileDescriptor
 
-var file_pipeline_pipeline_proto_rawDesc = string([]byte{
-	0x0a, 0x17, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x2f, 0x70, 0x69, 0x70, 0x65, 0x6c,
-	0x69, 0x6e, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x05, 0x70, 0x72, 0x6f, 0x74, 0x6f,
-	0x1a, 0x19, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75,
-	0x66, 0x2f, 0x61, 0x6e, 0x79, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0x8e, 0x01, 0x0a, 0x15,
-	0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x50, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x52, 0x65,
-	0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x16, 0x0a, 0x06, 0x73, 0x74, 0x61, 0x67, 0x65, 0x73, 0x18,
-	0x01, 0x20, 0x01, 0x28, 0x05, 0x52, 0x06, 0x73, 0x74, 0x61, 0x67, 0x65, 0x73, 0x12, 0x1f, 0x0a,
-	0x0b, 0x69, 0x73, 0x5f, 0x70, 0x61, 0x72, 0x61, 0x6c, 0x6c, 0x65, 0x6c, 0x18, 0x02, 0x20, 0x01,
-	0x28, 0x08, 0x52, 0x0a, 0x69, 0x73, 0x50, 0x61, 0x72, 0x61, 0x6c, 0x6c, 0x65, 0x6c, 0x12, 0x17,
-	0x0a, 0x07, 0x75, 0x73, 0x65, 0x72, 0x5f, 0x69, 0x64, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52,
-	0x06, 0x75, 0x73, 0x65, 0x72, 0x49, 0x64, 0x12, 0x23, 0x0a, 0x0d, 0x70, 0x69, 0x70, 0x65, 0x6c,
-	0x69, 0x6e, 0x65, 0x5f, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0c,
-	0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x4e, 0x61, 0x6d, 0x65, 0x22, 0x39, 0x0a, 0x16,
+var file_api_grpc_proto_pipeline_pipeline_proto_rawDesc = string([]byte{
+	0x0a, 0x26, 0x61, 0x70, 0x69, 0x2f, 0x67, 0x72, 0x70, 0x63, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f,
+	0x2f, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x2f, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69,
+	0x6e, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x05, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x1a,
+	0x19, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66,
+	0x2f, 0x61, 0x6e, 0x79, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0xaf, 0x01, 0x0a, 0x15, 0x43,
+	0x72, 0x65, 0x61, 0x74, 0x65, 0x50, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x52, 0x65, 0x71,
+	0x75, 0x65, 0x73, 0x74, 0x12, 0x16, 0x0a, 0x06, 0x73, 0x74, 0x61, 0x67, 0x65, 0x73, 0x18, 0x01,
+	0x20, 0x01, 0x28, 0x05, 0x52, 0x06, 0x73, 0x74, 0x61, 0x67, 0x65, 0x73, 0x12, 0x1f, 0x0a, 0x0b,
+	0x69, 0x73, 0x5f, 0x70, 0x61, 0x72, 0x61, 0x6c, 0x6c, 0x65, 0x6c, 0x18, 0x02, 0x20, 0x01, 0x28,
+	0x08, 0x52, 0x0a, 0x69, 0x73, 0x50, 0x61, 0x72, 0x61, 0x6c, 0x6c, 0x65, 0x6c, 0x12, 0x17, 0x0a,
+	0x07, 0x75, 0x73, 0x65, 0x72, 0x5f, 0x69, 0x64, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06,
+	0x75, 0x73, 0x65, 0x72, 0x49, 0x64, 0x12, 0x23, 0x0a, 0x0d, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69,
+	0x6e, 0x65, 0x5f, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0c, 0x70,
+	0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x4e, 0x61, 0x6d, 0x65, 0x12, 0x1f, 0x0a, 0x0b, 0x73,
+	0x74, 0x61, 0x67, 0x65, 0x5f, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x18, 0x05, 0x20, 0x03, 0x28, 0x09,
+	0x52, 0x0a, 0x73, 0x74, 0x61, 0x67, 0x65, 0x4e, 0x61, 0x6d, 0x65, 0x73, 0x22, 0x39, 0x0a, 0x16,
 	0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x50, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x52, 0x65,
 	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x1f, 0x0a, 0x0b, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69,
 	0x6e, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x70, 0x69, 0x70,
@@ -539,19 +550,19 @@ var file_pipeline_pipeline_proto_rawDesc = string([]byte{
 })
 
 var (
-	file_pipeline_pipeline_proto_rawDescOnce sync.Once
-	file_pipeline_pipeline_proto_rawDescData []byte
+	file_api_grpc_proto_pipeline_pipeline_proto_rawDescOnce sync.Once
+	file_api_grpc_proto_pipeline_pipeline_proto_rawDescData []byte
 )
 
-func file_pipeline_pipeline_proto_rawDescGZIP() []byte {
-	file_pipeline_pipeline_proto_rawDescOnce.Do(func() {
-		file_pipeline_pipeline_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_pipeline_pipeline_proto_rawDesc), len(file_pipeline_pipeline_proto_rawDesc)))
+func file_api_grpc_proto_pipeline_pipeline_proto_rawDescGZIP() []byte {
+	file_api_grpc_proto_pipeline_pipeline_proto_rawDescOnce.Do(func() {
+		file_api_grpc_proto_pipeline_pipeline_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_api_grpc_proto_pipeline_pipeline_proto_rawDesc), len(file_api_grpc_proto_pipeline_pipeline_proto_rawDesc)))
 	})
-	return file_pipeline_pipeline_proto_rawDescData
+	return file_api_grpc_proto_pipeline_pipeline_proto_rawDescData
 }
 
-var file_pipeline_pipeline_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
-var file_pipeline_pipeline_proto_goTypes = []any{
+var file_api_grpc_proto_pipeline_pipeline_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_api_grpc_proto_pipeline_pipeline_proto_goTypes = []any{
 	(*CreatePipelineRequest)(nil),     // 0: proto.CreatePipelineRequest
 	(*CreatePipelineResponse)(nil),    // 1: proto.CreatePipelineResponse
 	(*StartPipelineRequest)(nil),      // 2: proto.StartPipelineRequest
@@ -562,7 +573,7 @@ var file_pipeline_pipeline_proto_goTypes = []any{
 	(*CancelPipelineResponse)(nil),    // 7: proto.CancelPipelineResponse
 	(*anypb.Any)(nil),                 // 8: google.protobuf.Any
 }
-var file_pipeline_pipeline_proto_depIdxs = []int32{
+var file_api_grpc_proto_pipeline_pipeline_proto_depIdxs = []int32{
 	8, // 0: proto.StartPipelineRequest.input:type_name -> google.protobuf.Any
 	0, // 1: proto.PipelineService.CreatePipeline:input_type -> proto.CreatePipelineRequest
 	2, // 2: proto.PipelineService.StartPipeline:input_type -> proto.StartPipelineRequest
@@ -579,26 +590,26 @@ var file_pipeline_pipeline_proto_depIdxs = []int32{
 	0, // [0:1] is the sub-list for field type_name
 }
 
-func init() { file_pipeline_pipeline_proto_init() }
-func file_pipeline_pipeline_proto_init() {
-	if File_pipeline_pipeline_proto != nil {
+func init() { file_api_grpc_proto_pipeline_pipeline_proto_init() }
+func file_api_grpc_proto_pipeline_pipeline_proto_init() {
+	if File_api_grpc_proto_pipeline_pipeline_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pipeline_pipeline_proto_rawDesc), len(file_pipeline_pipeline_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_grpc_proto_pipeline_pipeline_proto_rawDesc), len(file_api_grpc_proto_pipeline_pipeline_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_pipeline_pipeline_proto_goTypes,
-		DependencyIndexes: file_pipeline_pipeline_proto_depIdxs,
-		MessageInfos:      file_pipeline_pipeline_proto_msgTypes,
+		GoTypes:           file_api_grpc_proto_pipeline_pipeline_proto_goTypes,
+		DependencyIndexes: file_api_grpc_proto_pipeline_pipeline_proto_depIdxs,
+		MessageInfos:      file_api_grpc_proto_pipeline_pipeline_proto_msgTypes,
 	}.Build()
-	File_pipeline_pipeline_proto = out.File
-	file_pipeline_pipeline_proto_goTypes = nil
-	file_pipeline_pipeline_proto_depIdxs = nil
+	File_api_grpc_proto_pipeline_pipeline_proto = out.File
+	file_api_grpc_proto_pipeline_pipeline_proto_goTypes = nil
+	file_api_grpc_proto_pipeline_pipeline_proto_depIdxs = nil
 }

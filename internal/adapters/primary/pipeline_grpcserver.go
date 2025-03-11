@@ -21,6 +21,7 @@ type PipelineServer struct {
 
 // CreatePipeline handles gRPC pipeline creation
 // CreatePipeline handles gRPC pipeline creation
+// CreatePipeline handles gRPC pipeline creation
 func (s *PipelineServer) CreatePipeline(ctx context.Context, req *proto.CreatePipelineRequest) (*proto.CreatePipelineResponse, error) {
 	userID, err := uuid.Parse(req.UserId)
 	if err != nil {
@@ -33,7 +34,18 @@ func (s *PipelineServer) CreatePipeline(ctx context.Context, req *proto.CreatePi
 		pipelineName = "Untitled Pipeline" // Default if not provided
 	}
 
-	pipelineID, err := s.Service.CreatePipeline(userID, pipelineName, int(req.Stages))
+	// Process stage names
+	stageNames := make([]string, len(req.StageNames))
+	for i, name := range req.StageNames {
+		if name == "" {
+			stageNames[i] = "Untitled Stage" // Default if not provided
+		} else {
+			stageNames[i] = name
+		}
+	}
+
+	// Call service with stage names
+	pipelineID, err := s.Service.CreatePipeline(userID, pipelineName, int(req.Stages), stageNames)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to create pipeline: %v", err)
 	}

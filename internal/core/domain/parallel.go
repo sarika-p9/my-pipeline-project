@@ -82,6 +82,7 @@ func (p *ParallelPipelineOrchestrator) Execute(ctx context.Context, userID uuid.
 			result, err := stage.Execute(ctx, pipeline.PipelineName, input)
 			logEntry := &models.Stages{
 				StageID:    stage.GetID(),
+				StageName:  stage.GetName(),
 				PipelineID: pipelineID,
 				Status:     "Completed",
 				Timestamp:  time.Now(),

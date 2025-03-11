@@ -49,10 +49,6 @@ func (d *DatabaseAdapter) UpdatePipelineExecution(execution *models.Pipelines) e
 		Update("status", execution.Status).Error
 }
 
-func (d *DatabaseAdapter) SaveExecutionLog(logEntry *models.Stages) error {
-	return d.DB.Create(logEntry).Error
-}
-
 // ✅ FIX: Accept pipelineID as string and convert to uuid.UUID
 func (d *DatabaseAdapter) GetPipelineStatus(pipelineID string) (string, error) {
 	parsedID, err := uuid.Parse(pipelineID)
@@ -82,10 +78,21 @@ func (d *DatabaseAdapter) GetPipelinesByUser(userID string) ([]models.Pipelines,
 	return pipelines, err
 }
 
-// GetPipelineStages fetches all stages associated with a pipeline
+func (d *DatabaseAdapter) SaveExecutionLog(logEntry *models.Stages) error {
+	// Ensure stage name is not empty, otherwise use "Untitled Stage"
+	if logEntry.StageName == "" {
+		logEntry.StageName = "Untitled Stage"
+	}
+
+	return d.DB.Create(logEntry).Error
+}
+
+// GetPipelineStages fetches all stages associated with a pipeline, including names
 func (d *DatabaseAdapter) GetPipelineStages(pipelineID uuid.UUID) ([]models.Stages, error) {
 	var stages []models.Stages
-	if err := d.DB.Where("pipeline_id = ?", pipelineID).Find(&stages).Error; err != nil {
+	if err := d.DB.Select("stage_id, pipeline_id, stage_name, status, error_msg, timestamp").
+		Where("pipeline_id = ?", pipelineID).
+		Find(&stages).Error; err != nil {
 		return nil, err
 	}
 	return stages, nil

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -15,22 +16,35 @@ type PipelineHandler struct {
 }
 
 type CreatePipelineRequest struct {
-	Name       string `json:"name"`
-	Stages     int    `json:"stages"`
-	IsParallel bool   `json:"is_parallel"` // Default to true
-	UserID     string `json:"user_id"`
+	Name       string   `json:"name"`
+	Stages     int      `json:"stages"` // ✅ Change from []models.Stages to int
+	IsParallel bool     `json:"is_parallel"`
+	UserID     string   `json:"user_id"`
+	StageNames []string `json:"stage_names"` // ✅ Ensure this stays as []string
 }
 
 // CreatePipeline handles pipeline creation
 func (h *PipelineHandler) CreatePipeline(c *gin.Context) {
 	var req CreatePipelineRequest
+
+	// Bind JSON and log the received payload
 	if err := c.ShouldBindJSON(&req); err != nil {
+		fmt.Println("❌ Invalid request payload:", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
 	}
+	fmt.Printf("📥 Received CreatePipeline Request: %+v\n", req)
 
 	if req.UserID == "" {
+		fmt.Println("❌ Missing User ID")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "User ID is required"})
+		return
+	}
+
+	// ✅ Validate Stages
+	if req.Stages <= 0 {
+		fmt.Println("❌ Invalid number of stages:", req.Stages)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid number of stages! Must be greater than 0."})
 		return
 	}
 
@@ -42,17 +56,26 @@ func (h *PipelineHandler) CreatePipeline(c *gin.Context) {
 	// Convert UserID (string) to uuid.UUID
 	userUUID, err := uuid.Parse(req.UserID)
 	if err != nil {
+		fmt.Println("❌ Invalid User ID format:", req.UserID)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID format"})
 		return
 	}
 
-	// Call CreatePipeline with correct arguments (uuid.UUID, string, int)
-	pipelineID, err := h.Service.CreatePipeline(userUUID, req.Name, req.Stages)
+	// ✅ Log details before creating pipeline
+	fmt.Printf("🛠️ Creating Pipeline: Name=%s, Stages=%d, UserID=%s, StageNames=%v\n", req.Name, req.Stages, userUUID, req.StageNames)
+
+	// ✅ Call service to create pipeline
+	pipelineID, err := h.Service.CreatePipeline(userUUID, req.Name, req.Stages, req.StageNames)
 	if err != nil {
+		fmt.Println("❌ Failed to create pipeline:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create pipeline"})
 		return
 	}
 
+	// ✅ Log success
+	fmt.Println("✅ Pipeline Created Successfully, ID:", pipelineID)
+
+	// Return response
 	c.JSON(http.StatusAccepted, gin.H{
 		"message":     "Pipeline created",
 		"pipeline_id": pipelineID.String(),

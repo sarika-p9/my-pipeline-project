@@ -30,6 +30,7 @@ type Pipelines struct {
 type Stages struct {
 	StageID    uuid.UUID `gorm:"type:uuid;primaryKey"`
 	PipelineID uuid.UUID `gorm:"type:uuid;not null;index"`
+	StageName  string    `gorm:"type:varchar(255);not null;default:'Untitled Stage'"`
 	Status     string    `gorm:"type:varchar(50);not null"`
 	ErrorMsg   string    `gorm:"type:text"`
 	Timestamp  time.Time `gorm:"autoCreateTime"`

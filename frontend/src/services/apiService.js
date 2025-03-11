@@ -1,12 +1,12 @@
 const BASE_URL = "http://localhost:5000"; // Replace with your actual API URL
 
 const apiService = {
-  createPipeline: async (stages) => {
+  createPipeline: async (pipelineName, stages) => {
     try {
       const response = await fetch(`${BASE_URL}/create-pipeline`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stages }),
+        body: JSON.stringify({ pipeline_name: pipelineName, stages }),
       });
       return response.json();
     } catch (error) {
