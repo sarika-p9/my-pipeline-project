@@ -10,6 +10,8 @@ import { useNavigate } from "react-router-dom";
 import Sidebar from "../pages/Sidebar";
 import CircularProgress from "@mui/material/CircularProgress";
 import Topbar from "../components/Topbar";
+const WebSocket_URL = "ws://localhost:8080/ws";
+
 
 
 const isTokenExpired = () => {
@@ -37,12 +39,9 @@ const getUserIdFromToken = () => {
 const CreatePipeline = () => {
   const [user, setUser] = useState({ name: "", role: "", email: "" });
   const [pipelines, setPipelines] = useState([]);
-  const [profileOpen, setProfileOpen] = useState(false);
   const [pipelineStages, setPipelineStages] = useState([]);
-  const [isParallel, setIsParallel] = useState(false);
-  const [anchorEl, setAnchorEl] = useState(null);
+  const [isParallel, setIsParallel] = useState(true);
   const navigate = useNavigate();
-  const [stagesDialogOpen, setStagesDialogOpen] = useState(false);
   const [selectedPipelineStages, setSelectedPipelineStages] = useState([]);
   const [selectedPipelineId, setSelectedPipelineId] = useState(null);
   const [openStageModal, setOpenStageModal] = useState(false);
@@ -52,6 +51,10 @@ const CreatePipeline = () => {
   const [numStages, setNumStages] = useState(1);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [stageNames, setStageNames] = useState([]);
+  const [stages, setStages] = useState([]);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [pipelineStatus, setPipelineStatus] = useState({});
+  const [socket, setSocket] = useState(null);
 
 
   
@@ -62,33 +65,34 @@ const CreatePipeline = () => {
       navigate("/login");
       return;
     }
-    fetchUserProfile();
     fetchUserPipelines();
   }, []);
+
+  useEffect(() => {
+    const ws = new WebSocket(WebSocket_URL);
+    ws.onopen = () => console.log("WebSocket Connected");
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      console.log("Received WebSocket Data:", data);
+      setSelectedPipelineStages((prevStages) =>
+        prevStages.map((stage) =>
+          stage.StageID === data.StageID ? { ...stage, Status: data.Status } : stage
+        )
+      );
+    };
+    ws.onerror = (error) => console.error("WebSocket Error:", error);
+    ws.onclose = () => console.log("WebSocket Disconnected");
+    setSocket(ws);
+    return () => ws.close();
+  }, []);
+
 
   const authAxios = axios.create({
     baseURL: "http://localhost:8080",
     headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
   });
 
-  const logoutUser = () => {
-    localStorage.clear();
-    navigate("/login");
-  };
 
-  const fetchUserProfile = async () => {
-    try {
-      const response = await authAxios.get(`/user/${localStorage.getItem("user_id")}`);
-      if (response.data) {
-        setUser(response.data);
-        localStorage.setItem("user_name", response.data.name);
-        localStorage.setItem("user_role", response.data.role);
-      }
-    } catch (error) {
-      console.error("Failed to fetch user profile", error);
-      logoutUser();
-    }
-  };
 
   const fetchUserPipelines = async () => {
     try {
@@ -135,39 +139,30 @@ const CreatePipeline = () => {
       alert(`Error: ${error.response?.data?.error || "Unknown error"}`);
     }
   };
-  
-  
-  
-  
-  
-  
-  
 
   const handlePipelineAction = async (pipelineId, status) => {
     try {
       if (status === "Running") {
         await authAxios.post(`/pipelines/${pipelineId}/cancel`, {
-          user_id: getUserIdFromToken(), // ✅ Retrieve user ID from token
-          is_parallel: isParallel ?? true, // ✅ Default to true if not set
+          user_id: getUserIdFromToken(),
+          is_parallel: true,
         });
       } else if (status === "Completed") {
         alert("Completed pipelines cannot be started again.");
         return;
       } else {
         await authAxios.post(`/pipelines/${pipelineId}/start`, {
-          user_id: getUserIdFromToken(), // ✅ Retrieve user ID from token
-          input: { raw_material: "Steel", quantity: 100 }, // ✅ Matches expected request format
-          is_parallel: isParallel ?? true, // ✅ Default to true if not set
+          user_id: getUserIdFromToken(),
+          input: { raw_material: "Steel", quantity: 100 },
+          is_parallel: true,
         });
+        fetchPipelineStages(pipelineId);
       }
-  
       setPipelines((prevPipelines) =>
         prevPipelines.map((pipeline) =>
           pipeline.PipelineID === pipelineId ? { ...pipeline, Status: "Running" } : pipeline
         )
       );
-  
-      setTimeout(fetchUserPipelines, 1000); // Refresh pipeline list after 1 second
     } catch (error) {
       console.error("Failed to update pipeline status", error);
       alert(`Error: ${error.response?.data?.error || "Unknown error"}`);
@@ -180,22 +175,22 @@ const CreatePipeline = () => {
       name,
       stage_number: index + 1
     }))); 
-    setDialogOpen(false); // Close the dialog only after saving
+    setDialogOpen(false); 
   };
   
 
   const fetchPipelineStages = async (pipelineID) => {
-    console.log("Fetching stages for pipeline:", pipelineID);
-  
-    // Get the token from localStorage
-    const token = localStorage.getItem("token");
-  
-    // Check if the token is expired
-    if (!token || isTokenExpired()) {
-      console.error("Token is missing or expired. Please log in again.");
+    if (isTokenExpired()) {
+      console.error("Token is expired. Please log in again.");
+      navigate("/login");
       return;
     }
-  
+    const token = localStorage.getItem("token");
+    if (!token) {
+      console.error("Token is missing. Please log in.");
+      navigate("/login");
+      return;
+    }
     try {
       const response = await fetch(`http://localhost:8080/pipelines/${pipelineID}/stages`, {
         method: "GET",
@@ -204,38 +199,15 @@ const CreatePipeline = () => {
           "Content-Type": "application/json",
         },
       });
-  
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-  
+      if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
       const data = await response.json();
-      console.log("Stages API Response:", data);
-  
-      // Extract StageID, StageName, and Status
-      const stages = data.map(stage => ({
-        StageID: stage.StageID,
-        StageName: stage.StageName,
-        Status: stage.Status
-      }));
-  
-      if (stages.length > 0) {
-        setSelectedPipelineStages(stages);
-        setOpenStageModal(true);
-      } else {
-        console.warn("No stages found for this pipeline.");
-        setSelectedPipelineStages([]);
-      }
+      setSelectedPipelineStages(data);
+      setOpenStageModal(true);
     } catch (error) {
       console.error("Error fetching pipeline stages:", error);
     }
   };
-  
-  
-  
-  
-  
-  
+    
 
   const handleStageNameChange = (index, value) => {
     setStageNames((prev) => {
@@ -244,13 +216,11 @@ const CreatePipeline = () => {
       return updatedStages;
     });
   };
-  
 
   const handleStageDialogOpen = () => {
     setStageNames(new Array(numStages).fill("")); // Ensures correct number of input fields
     setDialogOpen(true);
   };
-  
   
   const handleDeletePipeline = async (pipelineId) => {
     if (!window.confirm("Are you sure you want to delete this pipeline?")) return;
@@ -258,7 +228,6 @@ const CreatePipeline = () => {
     try {
       await axios.delete(`http://localhost:8080/api/pipelines/${pipelineId}`);
       
-      // ✅ Ensure correct key: Filter out deleted pipeline
       setPipelines(pipelines.filter(pipeline => pipeline.PipelineID !== pipelineId));
     } catch (error) {
       console.error("Error deleting pipeline:", error);
@@ -266,16 +235,14 @@ const CreatePipeline = () => {
     }
   };
   
-  // Show loader while data is being fetched
   if (loading) return <CircularProgress />;
   
-
-
   return (
     <Box sx={{ display: "flex" }}>
       <Topbar />
       <Sidebar />
       <Container maxWidth="md">
+   
         <Box sx={{ mt: 5, p: 3, boxShadow: 3, borderRadius: 2 }}>
           <Typography variant="h5" sx={{ mb: 2 }}>Your Pipelines</Typography>
           {pipelines.length > 0 ? (
@@ -309,18 +276,15 @@ const CreatePipeline = () => {
                         {pipeline.Status === "Running" ? "Cancel Pipeline" : "Start Pipeline"}
                       </Button>
                       {pipeline.Status !== "Created" && (
-                        <Button
-                          variant="outlined"
-                          sx={{ ml: 2 }}
-                          onClick={() => {
-                            console.log("Show Stages button clicked for pipeline:", pipeline.PipelineID);
-                            fetchPipelineStages(pipeline.PipelineID);
-                          }}
-                        >
-                          Show Stages
-                        </Button>
+                      <Button
+                        variant="outlined"
+                        sx={{ ml: 2 }}
+                        onClick={() => fetchPipelineStages(pipeline.PipelineID)}
+                      >
+                        Show Stages
+                      </Button>
                       )}
-                      {pipeline.Status !== "Running" && (
+                       {pipeline.Status !== "Running" && (
                         <Button
                           variant="contained"
                           color="secondary"
@@ -339,30 +303,29 @@ const CreatePipeline = () => {
             <Typography>No pipelines created.</Typography>
           )}
         </Box>
-  
+
         <Dialog open={openStageModal} onClose={() => setOpenStageModal(false)}>
           <DialogTitle>Pipeline Stages</DialogTitle>
           <DialogContent>
             {selectedPipelineStages.length > 0 ? (
               <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell><strong>Stage ID</strong></TableCell>
-                  <TableCell><strong>Stage Name</strong></TableCell> {/* ✅ Added */}
-                  <TableCell><strong>Status</strong></TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {selectedPipelineStages.map((stage) => (
-                  <TableRow key={stage.StageID}>
-                    <TableCell>{stage.StageID}</TableCell>
-                    <TableCell>{stage.StageName}</TableCell> {/* ✅ Added */}
-                    <TableCell>{stage.Status}</TableCell>
+                <TableHead>
+                  <TableRow>
+                    <TableCell><strong>Stage ID</strong></TableCell>
+                    <TableCell><strong>Stage Name</strong></TableCell>
+                    <TableCell><strong>Status</strong></TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            
+                </TableHead>
+                <TableBody>
+                  {selectedPipelineStages.map((stage) => (
+                    <TableRow key={stage.StageID}>
+                      <TableCell>{stage.StageID}</TableCell>
+                      <TableCell>{stage.StageName}</TableCell>
+                      <TableCell>{stage.Status}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             ) : (
               <Typography>No stages found for this pipeline.</Typography>
             )}

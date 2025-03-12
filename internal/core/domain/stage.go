@@ -2,12 +2,13 @@ package domain
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/sarika-p9/my-pipeline-project/internal/websocket"
+	"github.com/sarika-p9/my-pipeline-project/internal/infrastructure"
 )
 
 type Stage interface {
@@ -16,6 +17,12 @@ type Stage interface {
 	Execute(ctx context.Context, pipelineName string, input interface{}) (interface{}, error)
 	HandleError(ctx context.Context, err error) error
 	Rollback(ctx context.Context, input interface{}) error
+}
+
+type StageStatus struct {
+	PipelineName string `json:"pipeline_name"`
+	StageName    string `json:"stage_name"`
+	Status       string `json:"status"`
 }
 
 type BaseStage struct {
@@ -39,15 +46,25 @@ func (s *BaseStage) GetName() string {
 func (s *BaseStage) Execute(ctx context.Context, pipelineName string, input interface{}) (interface{}, error) {
 	log.Printf("Executing stage: %s (%s) for pipeline: %s", s.Name, s.ID, pipelineName)
 
-	// Update status to "Running" and send JSON message with pipelineName and stage name
+	// Update status to "Running"
 	s.Status = "Running"
-	websocket.Manager.BroadcastMessage(pipelineName+" - "+s.Name, "Running")
+	message, _ := json.Marshal(StageStatus{
+		PipelineName: pipelineName,
+		StageName:    s.Name,
+		Status:       "Running",
+	})
+	infrastructure.WebSocket.Broadcast <- string(message)
 
 	time.Sleep(5 * time.Second) // Simulating execution
 
-	// Update status to "Completed" and send JSON message with pipelineName and stage name
+	// Update status to "Completed"
 	s.Status = "Completed"
-	websocket.Manager.BroadcastMessage(pipelineName+" - "+s.Name, "Completed")
+	message, _ = json.Marshal(StageStatus{
+		PipelineName: pipelineName,
+		StageName:    s.Name,
+		Status:       "Completed",
+	})
+	infrastructure.WebSocket.Broadcast <- string(message)
 
 	return input, nil
 }

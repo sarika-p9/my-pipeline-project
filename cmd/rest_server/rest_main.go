@@ -125,7 +125,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/gorilla/websocket"
 	"github.com/joho/godotenv"
 	"github.com/nats-io/nats.go"
 	proto "github.com/sarika-p9/my-pipeline-project/api/grpc/proto/authentication"
@@ -136,7 +135,6 @@ import (
 	"github.com/sarika-p9/my-pipeline-project/internal/infrastructure"
 	"github.com/sarika-p9/my-pipeline-project/internal/messaging"
 	"github.com/sarika-p9/my-pipeline-project/internal/middleware"
-	"github.com/sarika-p9/my-pipeline-project/internal/routes"
 	"github.com/sarika-p9/my-pipeline-project/internal/services"
 	"github.com/streadway/amqp"
 	"google.golang.org/grpc"
@@ -148,27 +146,6 @@ var (
 	rabbitMQChannel *amqp.Channel
 	natsConn        *nats.Conn
 )
-var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool { return true },
-}
-
-func handleWebSocket(c *gin.Context) {
-	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
-	if err != nil {
-		log.Println("[WebSocket] Upgrade failed:", err)
-		return
-	}
-	defer conn.Close()
-	log.Println("[WebSocket] Client connected")
-
-	for {
-		_, _, err := conn.ReadMessage()
-		if err != nil {
-			log.Println("[WebSocket] Read error:", err)
-			break
-		}
-	}
-}
 
 func RESTServer(authService *services.AuthService, pipelineService *services.PipelineService, wg *sync.WaitGroup) {
 	defer wg.Done()
@@ -191,7 +168,6 @@ func RESTServer(authService *services.AuthService, pipelineService *services.Pip
 		}
 		c.Next()
 	})
-	routes.RegisterRoutes(r)
 	r.POST("/register", gin.WrapF(authHandler.RegisterHandler))
 	r.POST("/login", gin.WrapF(authHandler.LoginHandler))
 	r.POST("/logout", authHandler.LogoutHandler)
@@ -204,6 +180,10 @@ func RESTServer(authService *services.AuthService, pipelineService *services.Pip
 	r.GET("/pipelines/:id/status", authMiddleware, handler.GetPipelineStatus)
 	r.POST("/pipelines/:id/cancel", authMiddleware, handler.CancelPipeline)
 	r.DELETE("/api/pipelines/:pipelineID", authHandler.DeletePipelineHandler)
+	r.GET("/ws", func(c *gin.Context) {
+		infrastructure.WebSocket.HandleConnections(c)
+	})
+	go infrastructure.WebSocket.StartBroadcaster()
 
 	log.Println("Starting REST API on port 8080...")
 
