@@ -15,17 +15,14 @@ type DatabaseAdapter struct {
 
 var _ ports.PipelineRepository = (*DatabaseAdapter)(nil)
 
-// NewDatabaseAdapter initializes DatabaseAdapter with a gorm.DB instance
 func NewDatabaseAdapter(db *gorm.DB) *DatabaseAdapter {
 	return &DatabaseAdapter{DB: db}
 }
 
-// SaveUser inserts a new user into the database
 func (d *DatabaseAdapter) SaveUser(user *models.User) error {
 	return d.DB.Create(user).Error
 }
 
-// GetUserByID retrieves a user by their ID
 func (d *DatabaseAdapter) GetUserByID(userID uuid.UUID) (*models.User, error) {
 	var user models.User
 	if err := d.DB.First(&user, "user_id = ?", userID).Error; err != nil {
@@ -34,7 +31,6 @@ func (d *DatabaseAdapter) GetUserByID(userID uuid.UUID) (*models.User, error) {
 	return &user, nil
 }
 
-// UpdateUser updates user details
 func (d *DatabaseAdapter) UpdateUser(userID uuid.UUID, updates map[string]interface{}) error {
 	return d.DB.Model(&models.User{}).Where("user_id = ?", userID).Updates(updates).Error
 }
@@ -49,7 +45,6 @@ func (d *DatabaseAdapter) UpdatePipelineExecution(execution *models.Pipelines) e
 		Update("status", execution.Status).Error
 }
 
-// ✅ FIX: Accept pipelineID as string and convert to uuid.UUID
 func (d *DatabaseAdapter) GetPipelineStatus(pipelineID string) (string, error) {
 	parsedID, err := uuid.Parse(pipelineID)
 	if err != nil {
@@ -61,10 +56,9 @@ func (d *DatabaseAdapter) GetPipelineStatus(pipelineID string) (string, error) {
 		return "", err
 	}
 
-	return execution.Status, nil // ✅ Return only status
+	return execution.Status, nil
 }
 
-// ✅ FIX: Accept userID as string and convert to uuid.UUID
 func (d *DatabaseAdapter) GetPipelinesByUser(userID string) ([]models.Pipelines, error) {
 	parsedID, err := uuid.Parse(userID)
 	if err != nil {
@@ -72,14 +66,13 @@ func (d *DatabaseAdapter) GetPipelinesByUser(userID string) ([]models.Pipelines,
 	}
 
 	var pipelines []models.Pipelines
-	err = d.DB.Select("pipeline_id, user_id, status, pipeline_name"). // ✅ Ensure PipelineName is included
-										Where("user_id = ?", parsedID).
-										Find(&pipelines).Error
+	err = d.DB.Select("pipeline_id, user_id, status, pipeline_name").
+		Where("user_id = ?", parsedID).
+		Find(&pipelines).Error
 	return pipelines, err
 }
 
 func (d *DatabaseAdapter) SaveExecutionLog(logEntry *models.Stages) error {
-	// Ensure stage name is not empty, otherwise use "Untitled Stage"
 	if logEntry.StageName == "" {
 		logEntry.StageName = "Untitled Stage"
 	}
@@ -94,7 +87,6 @@ func (r *DatabaseAdapter) UpdateStageStatus(stageID uuid.UUID, status string) er
 		Error
 }
 
-// GetPipelineStages fetches all stages associated with a pipeline, including names
 func (d *DatabaseAdapter) GetPipelineStages(pipelineID uuid.UUID) ([]models.Stages, error) {
 	var stages []models.Stages
 	if err := d.DB.Select("stage_id, pipeline_id, stage_name, status, error_msg, timestamp").
@@ -108,7 +100,7 @@ func (d *DatabaseAdapter) GetPipelineStages(pipelineID uuid.UUID) ([]models.Stag
 func (d *DatabaseAdapter) DeletePipeline(ctx context.Context, pipelineID string) error {
 	parsedID, err := uuid.Parse(pipelineID)
 	if err != nil {
-		return err // Return an error if pipelineID is invalid
+		return err
 	}
 
 	return d.DB.WithContext(ctx).Where("pipeline_id = ?", parsedID).Delete(&models.Pipelines{}).Error

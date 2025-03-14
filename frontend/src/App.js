@@ -3,7 +3,7 @@ import AuthPage from "./components/authpage";
 import AppRoutes from "./routes";
 
 const isAuthenticated = () => {
-  return localStorage.getItem("token") !== null; // Check if user is logged in
+  return localStorage.getItem("token") !== null; 
 };
 
 function App() {

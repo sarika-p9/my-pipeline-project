@@ -1,5 +1,3 @@
-// internal/infrastructure/rabbitmq.go
-
 package infrastructure
 
 import (

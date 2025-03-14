@@ -14,7 +14,6 @@ type AuthServer struct {
 	AuthService *services.AuthService
 }
 
-// Register handles user registration via gRPC
 func (s *AuthServer) Register(ctx context.Context, req *proto.RegisterRequest) (*proto.RegisterResponse, error) {
 	userID, email, token, err := s.AuthService.RegisterUser(req.Email, req.Password)
 	if err != nil {
@@ -29,7 +28,6 @@ func (s *AuthServer) Register(ctx context.Context, req *proto.RegisterRequest) (
 	}, nil
 }
 
-// Login handles user authentication via gRPC
 func (s *AuthServer) Login(ctx context.Context, req *proto.LoginRequest) (*proto.LoginResponse, error) {
 	userID, email, token, err := s.AuthService.LoginUser(req.Email, req.Password)
 	if err != nil {

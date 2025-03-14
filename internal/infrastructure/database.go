@@ -25,7 +25,7 @@ func InitDatabase() {
 	var err error
 	DB, err = gorm.Open(postgres.New(postgres.Config{
 		DSN:                  dsn,
-		PreferSimpleProtocol: true, // Disable prepared statements
+		PreferSimpleProtocol: true,
 	}), &gorm.Config{})
 	if err != nil {
 		log.Fatalf("Failed to connect to Supabase database: %v", err)
@@ -47,7 +47,6 @@ func migrateDatabase() {
 }
 
 func migrateTable(model interface{}) {
-	// Get the table name using GORM's default table naming convention
 	tableName := DB.NamingStrategy.TableName(getTableName(model))
 
 	if DB.Migrator().HasTable(model) {
@@ -61,12 +60,11 @@ func migrateTable(model interface{}) {
 	log.Printf("Successfully migrated table: %s", tableName)
 }
 
-// Helper function to get the table name
 func getTableName(model interface{}) string {
 	if t, ok := model.(interface{ TableName() string }); ok {
 		return t.TableName()
 	}
-	return fmt.Sprintf("%T", model) // Fallback: use struct name
+	return fmt.Sprintf("%T", model)
 }
 
 func GetDB() *gorm.DB {

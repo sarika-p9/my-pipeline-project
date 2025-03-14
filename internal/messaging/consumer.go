@@ -17,7 +17,6 @@ func StartConsumer(ch *amqp.Channel, queueName string) error {
 	go func() {
 		for msg := range msgs {
 			log.Printf("📥 Consumed message: %s", msg.Body)
-			// TODO: Process the message (e.g., trigger pipeline actions)
 		}
 	}()
 	log.Println("✅ Consumer is running...")

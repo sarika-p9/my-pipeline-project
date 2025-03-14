@@ -9,18 +9,15 @@ import (
 	"github.com/sarika-p9/my-pipeline-project/internal/services"
 )
 
-// AuthHandler handles authentication routes
 type AuthHandler struct {
 	Service *services.AuthService
 }
 
-// Credentials struct for user input
 type Credentials struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
-// RegisterHandler handles user registration
 func (h *AuthHandler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
@@ -32,7 +29,6 @@ func (h *AuthHandler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
-	// Debug: Print received data
 	log.Printf("Received Register Request: Email=%s, Password=%s", creds.Email, creds.Password)
 
 	userID, email, token, err := h.Service.RegisterUser(creds.Email, creds.Password)
@@ -40,7 +36,6 @@ func (h *AuthHandler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	// Debug: Print success
 	log.Printf("User Registered Successfully: ID=%s, Email=%s", userID, email)
 
 	w.WriteHeader(http.StatusCreated)

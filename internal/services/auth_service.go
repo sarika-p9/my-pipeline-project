@@ -19,7 +19,6 @@ type AuthService struct {
 	Repo           ports.PipelineRepository
 }
 
-// NewAuthService initializes the AuthService
 func NewAuthService(repo ports.PipelineRepository) *AuthService {
 	return &AuthService{
 		SupabaseClient: infrastructure.InitSupabaseClient(),
@@ -35,21 +34,19 @@ func (s *AuthService) RegisterUser(email, password string) (string, string, stri
 		Password: password,
 	})
 	if err != nil {
-		log.Printf("[ERROR] Supabase SignUp failed: %v", err) // Log error
+		log.Printf("[ERROR] Supabase SignUp failed: %v", err)
 		return "", "", "", errors.New("registration failed: " + err.Error())
 	}
 
 	if user == nil {
-		log.Printf("[ERROR] Unexpected response from Supabase: user is nil") // Log if user is nil
+		log.Printf("[ERROR] Unexpected response from Supabase: user is nil")
 		return "", "", "", errors.New("unexpected response from Supabase: user is nil")
 	}
 
-	// ✅ Wait for the email confirmation before proceeding
 	log.Println("[INFO] Registration successful. Waiting for email confirmation.")
-	// ✅ Wait for the email confirmation before proceeding
 	fmt.Println("Please confirm your email before proceeding.")
 
-	return user.ID, user.Email, "", nil // Don't return token yet
+	return user.ID, user.Email, "", nil
 }
 
 func (s *AuthService) LoginUser(email, password string) (string, string, string, error) {
@@ -65,16 +62,13 @@ func (s *AuthService) LoginUser(email, password string) (string, string, string,
 		return "", "", "", errors.New("unexpected response from Supabase: session or user is nil")
 	}
 
-	// ✅ Convert string UserID to uuid.UUID
 	userUUID, err := uuid.Parse(session.User.ID)
 	if err != nil {
 		return "", "", "", errors.New("invalid user UUID: " + err.Error())
 	}
 
-	// ✅ Check if user already exists in DB
 	existingUser, _ := s.Repo.GetUserByID(userUUID)
 	if existingUser == nil {
-		// ✅ Save user details after email confirmation
 		newUser := &models.User{
 			UserID: userUUID,
 			Email:  session.User.Email,
@@ -87,18 +81,14 @@ func (s *AuthService) LoginUser(email, password string) (string, string, string,
 	return session.User.ID, session.User.Email, session.AccessToken, nil
 }
 
-// GetUserByID fetches user details
 func (s *AuthService) GetUserByID(userID uuid.UUID) (*models.User, error) {
 	return s.Repo.GetUserByID(userID)
 }
 
-// UpdateUser updates user details
 func (s *AuthService) UpdateUser(userID uuid.UUID, updates map[string]interface{}) error {
 	return s.Repo.UpdateUser(userID, updates)
 }
 
-// LogoutUser revokes the user's session token
-// LogoutUser revokes the user's session token
 func (s *AuthService) LogoutUser(token string) error {
 	if token == "" {
 		log.Println("LogoutUser error: empty token")
@@ -109,7 +99,7 @@ func (s *AuthService) LogoutUser(token string) error {
 	if err != nil {
 		if strings.Contains(err.Error(), "token is expired") {
 			log.Println("Logout warning: token is already expired, treating as logged out.")
-			return nil // Ignore the error and return success
+			return nil
 		}
 		log.Println("Supabase logout error:", err)
 		return errors.New("failed to log out: " + err.Error())

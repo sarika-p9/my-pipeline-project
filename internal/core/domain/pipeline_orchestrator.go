@@ -6,7 +6,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// PipelineOrchestrator defines the core contract for executing pipelines
 type PipelineOrchestrator interface {
 	AddStage(stage Stage) error
 	Execute(ctx context.Context, userID uuid.UUID, pipelineID uuid.UUID, input interface{}) (uuid.UUID, interface{}, error)

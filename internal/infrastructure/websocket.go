@@ -25,7 +25,6 @@ var WebSocket = &WebSocketManager{
 	},
 }
 
-// Handle new WebSocket connections
 func (wm *WebSocketManager) HandleConnections(c *gin.Context) {
 	conn, err := wm.upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
@@ -50,7 +49,6 @@ func (wm *WebSocketManager) HandleConnections(c *gin.Context) {
 	}
 }
 
-// Start broadcasting messages to all clients
 func (wm *WebSocketManager) StartBroadcaster() {
 	for {
 		msg := <-wm.broadcast
@@ -66,7 +64,6 @@ func (wm *WebSocketManager) StartBroadcaster() {
 	}
 }
 
-// Send message to all connected clients
 func (wm *WebSocketManager) SendMessage(pipelineName, stageName, status string) {
 	message := map[string]string{
 		"pipeline_name": pipelineName,

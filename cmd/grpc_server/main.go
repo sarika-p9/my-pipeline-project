@@ -30,35 +30,27 @@ var (
 )
 
 func main() {
-	// Load environment variables
 	if err := godotenv.Load(); err != nil {
 		log.Println("Warning: No .env file found. Proceeding with existing environment variables.")
 	}
 
-	// Initialize database and Supabase client
-	// Initialize the database
 	infrastructure.InitDatabase()
 
-	// Get the database instance
-	db := infrastructure.GetDB() // ✅ Fix: Use GetDB() to retrieve *gorm.DB
+	db := infrastructure.GetDB()
 
-	// Pass the database instance to the repository adapter
-	dbRepo := secondary.NewDatabaseAdapter(db) // ✅ Fix: Passing *gorm.DB correctly
+	dbRepo := secondary.NewDatabaseAdapter(db)
 
 	authService := services.NewAuthService(dbRepo)
 	pipelineService := services.NewPipelineService(dbRepo)
 
-	// Create gRPC server
 	grpcServer := grpc.NewServer()
 	authServer := &primary.AuthServer{AuthService: authService}
 	pipelineServer := &primary.PipelineServer{Service: pipelineService}
 
-	// Register gRPC services
 	proto.RegisterAuthServiceServer(grpcServer, authServer)
 	pipeline_proto.RegisterPipelineServiceServer(grpcServer, pipelineServer)
 	reflection.Register(grpcServer)
 
-	// Start gRPC server
 	go func() {
 		listener, err := net.Listen("tcp", ":50051")
 		if err != nil {
@@ -70,7 +62,6 @@ func main() {
 		}
 	}()
 
-	// Initialize RabbitMQ
 	go func() {
 		rabbitURL := "amqp://guest:guest@localhost:5672/"
 		var err error
@@ -82,14 +73,12 @@ func main() {
 		defer rabbitMQConn.Close()
 	}()
 
-	// Initialize NATS
 	go func() {
 		natsURL := "nats://localhost:4222"
 		natsConn = infrastructure.ConnectNATS(natsURL)
 		defer natsConn.Close()
 	}()
 
-	// Graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 	<-quit

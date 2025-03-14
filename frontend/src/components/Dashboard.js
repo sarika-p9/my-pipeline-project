@@ -73,7 +73,7 @@ const Dashboard = () => {
       <Container sx={{ maxWidth: "md" }}>
         <Box
           sx={{
-            backgroundColor: "#FFFFFF", // White background
+            backgroundColor: "#FFFFFF", 
             textAlign: "center",
             mt: 5,
             p: 4,

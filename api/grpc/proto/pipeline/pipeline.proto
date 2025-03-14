@@ -6,7 +6,6 @@ option go_package = "github.com/sarika-p9/my-pipeline-project/api/grpc/proto/pip
 
 import "google/protobuf/any.proto";
 
-// Service Definition
 service PipelineService {
     rpc CreatePipeline(CreatePipelineRequest) returns (CreatePipelineResponse);
     rpc StartPipeline(StartPipelineRequest) returns (StartPipelineResponse);
@@ -14,7 +13,6 @@ service PipelineService {
     rpc CancelPipeline(CancelPipelineRequest) returns (CancelPipelineResponse);
 }
 
-// Message Definitions
 message CreatePipelineRequest {
     int32 stages = 1;
     bool is_parallel = 2;

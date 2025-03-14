@@ -12,7 +12,6 @@ type UserHandler struct {
 	Service *services.AuthService
 }
 
-// GetUserProfile handles fetching user profile details
 func (h *UserHandler) GetUserProfile(c *gin.Context) {
 	userID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -33,7 +32,6 @@ func (h *UserHandler) GetUserProfile(c *gin.Context) {
 	})
 }
 
-// UpdateUserProfile handles updating user profile details
 func (h *UserHandler) UpdateUserProfile(c *gin.Context) {
 	userID, err := uuid.Parse(c.Param("id"))
 	if err != nil {

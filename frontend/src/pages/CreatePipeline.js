@@ -75,8 +75,6 @@ const CreatePipeline = () => {
         try {
             const data = JSON.parse(event.data);
             console.log("🔄 WebSocket Data Received:", data);
-
-            // ✅ Ensure we only update stages for the selected pipeline
             if (data.pipelineId === selectedPipelineId) {
                 setSelectedPipelineStages((prevStages) =>
                     prevStages.map((stage) =>
@@ -85,8 +83,6 @@ const CreatePipeline = () => {
                             : stage
                     )
                 );
-
-                // ✅ Check if all stages are completed, then update the pipeline status
                 setTimeout(() => {
                     setSelectedPipelineStages((prevStages) => {
                         const allCompleted = prevStages.every(stage => stage.Status === "Completed");
@@ -107,47 +103,7 @@ const CreatePipeline = () => {
 
     setSocket(ws);
     return () => ws.close();
-}, [selectedPipelineId]);  // ✅ Add dependency to ensure it updates correctly
-
-
-
-  const setupWebSocket = (pipelineId) => {
-    const ws = new WebSocket("ws://127.0.0.1:8080/ws");
-
-    ws.onopen = () => console.log("✅ WebSocket Connected");
-
-    ws.onmessage = (event) => {
-        try {
-            const data = JSON.parse(event.data);
-            console.log("🔄 WebSocket Data Received:", data);
-
-            setSelectedPipelineStages((prevStages) => 
-                prevStages.map((stage) => 
-                    stage.StageName === data.stage_name ? { ...stage, Status: data.status } : stage
-                )
-            );
-
-            // ✅ **Check if All Stages are Completed, Then Update Pipeline**
-            setTimeout(() => {
-                setSelectedPipelineStages((prevStages) => {
-                    const allCompleted = prevStages.every(stage => stage.Status === "Completed");
-                    if (allCompleted) {
-                        fetchAndUpdatePipelineStatus(); // ✅ Update pipeline status
-                    }
-                    return prevStages;
-                });
-            }, 500);
-
-        } catch (error) {
-            console.error("❌ WebSocket Error:", event.data, error);
-        }
-    };
-
-    ws.onerror = (error) => console.error("❌ WebSocket Error:", error);
-    ws.onclose = () => console.log("🔴 WebSocket Disconnected");
-};
-
-
+}, [selectedPipelineId]); 
 
 
 const fetchAndUpdatePipelineStatus = async () => {
@@ -160,21 +116,6 @@ const fetchAndUpdatePipelineStatus = async () => {
       console.error("❌ Failed to update pipeline status:", error);
   }
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  
 
   const authAxios = useMemo(() => {
     return axios.create({
@@ -201,7 +142,7 @@ const fetchAndUpdatePipelineStatus = async () => {
     console.log("numStages Value:", numStages);
     console.log("Type of numStages:", typeof numStages);
   
-    const stageCount = parseInt(numStages, 10); // Explicitly convert
+    const stageCount = parseInt(numStages, 10); 
   
     if (!stageCount || stageCount <= 0) {  
       alert("Invalid number of stages! Please enter a valid number.");
@@ -210,13 +151,13 @@ const fetchAndUpdatePipelineStatus = async () => {
   
     const payload = {
       name: pipelineName,
-      stages: stageCount,  // ✅ Ensure it's included correctly
+      stages: stageCount, 
       is_parallel: isParallel ?? true, 
       user_id: getUserIdFromToken() || "default-user-id", 
       stage_names: stageNames || [], 
     };
   
-    console.log("🚀 Sending Payload:", JSON.stringify(payload, null, 2)); // Debugging log
+    console.log("🚀 Sending Payload:", JSON.stringify(payload, null, 2));
   
     try {
       const response = await authAxios.post("/createpipelines", payload);
@@ -270,16 +211,6 @@ const fetchAndUpdatePipelineStatus = async () => {
     }
 };
 
-
-const handleShowStages = async (pipelineID) => {
-  await fetchPipelineStages(pipelineID);
-  setOpenStageModal(true);
-};
-
-
-  
-  
-
   const handleSaveStageNames = () => {
     setPipelineStages(stageNames.map((name, index) => ({
       name,
@@ -288,8 +219,6 @@ const handleShowStages = async (pipelineID) => {
     setDialogOpen(false); 
   };
   
-
-
   const fetchPipelineStages = async (pipelineId) => {
     try {
         console.log(`📥 Fetching stages for pipeline: ${pipelineId}`);
@@ -330,10 +259,6 @@ const handleShowStages = async (pipelineID) => {
 };
 
 
-
-
-    
-
   const handleStageNameChange = (index, value) => {
     setStageNames((prev) => {
       const updatedStages = [...prev];
@@ -343,7 +268,7 @@ const handleShowStages = async (pipelineID) => {
   };
 
   const handleStageDialogOpen = () => {
-    setStageNames(new Array(numStages).fill("")); // Ensures correct number of input fields
+    setStageNames(new Array(numStages).fill("")); 
     setDialogOpen(true);
   };
   
@@ -411,7 +336,7 @@ const handleShowStages = async (pipelineID) => {
                       onClick={() => {
                           console.log("🔎 Show Stages clicked for pipeline:", pipeline.PipelineID);
                           fetchPipelineStages(pipeline.PipelineID);
-                          setOpenStageModal(true);  // ✅ Ensure modal opens every time
+                          setOpenStageModal(true); 
                       }}
                   >
                         Show Stages

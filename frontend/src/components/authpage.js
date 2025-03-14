@@ -82,7 +82,7 @@ const LoginPage = ({ apiType }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    checkSession(navigate);  // ✅ Auto logout if token expired
+    checkSession(navigate);  
   }, []);
 
   const handleLogin = async () => {
@@ -95,10 +95,8 @@ const LoginPage = ({ apiType }) => {
         const { token } = response.data;
         if (!token) throw new Error("Token not received");
 
-        // ✅ Store token in localStorage
         localStorage.setItem("token", token);
 
-        // ✅ Decode token to extract user ID (JWT tokens are usually Base64 encoded)
         const payload = JSON.parse(atob(token.split(".")[1]));
         localStorage.setItem("user_id", payload.sub);
   

@@ -31,7 +31,6 @@ message LoginResponse {
   string token = 3;
 }
 
-// ✅ New Logout Messages
 message LogoutRequest {
   string token = 1;
 }

@@ -1,5 +1,3 @@
-// internal/consumer/task_consumer.go
-
 package consumer
 
 import (
@@ -27,7 +25,7 @@ func (c *Consumer) StartConsuming() {
 	msgs, err := c.RabbitMQ.Channel.Consume(
 		c.RabbitMQ.Queue.Name,
 		"",
-		false, // Auto-Ack is false for manual acknowledgment
+		false,
 		false,
 		false,
 		false,
@@ -43,13 +41,12 @@ func (c *Consumer) StartConsuming() {
 		var task Task
 		if err := json.Unmarshal(d.Body, &task); err != nil {
 			log.Printf("❌ Failed to unmarshal task: %v", err)
-			d.Nack(false, false) // Negative Acknowledgment
+			d.Nack(false, false)
 			continue
 		}
 
 		log.Printf("📥 Processing task: %+v", task)
-		// TODO: Add actual processing logic here
 
-		d.Ack(false) // Acknowledge after successful processing
+		d.Ack(false)
 	}
 }

@@ -59,8 +59,6 @@ func (ps *PipelineService) CreatePipeline(userID uuid.UUID, name string, stageCo
 	return pipelineID, nil
 }
 
-// InsertPipelineStages inserts the stages into the database with "Pending" status
-// InsertPipelineStages inserts the stages into the database with "Pending" status
 func (ps *PipelineService) InsertPipelineStages(pipelineID uuid.UUID, stageNames []string) error {
 	fmt.Printf("🔄 Inserting stages for pipeline: %s, Total stages: %d\n", pipelineID, len(stageNames))
 
@@ -82,7 +80,6 @@ func (ps *PipelineService) InsertPipelineStages(pipelineID uuid.UUID, stageNames
 	return nil
 }
 
-// ✅ Start pipeline execution based on pipeline ID
 func (ps *PipelineService) StartPipeline(ctx context.Context, userID uuid.UUID, pipelineID uuid.UUID, input interface{}) error {
 	fmt.Printf("🚀 Received request to start pipeline: %s\n", pipelineID)
 
@@ -113,30 +110,24 @@ func (ps *PipelineService) StartPipeline(ctx context.Context, userID uuid.UUID, 
 			return err
 		}
 
-		// ✅ Create a BaseStage instance and call Execute
-		baseStage := domain.NewBaseStage(stage.StageName) // Initialize BaseStage
+		baseStage := domain.NewBaseStage(stage.StageName)
 		_, err := baseStage.Execute(ctx, pipelineID.String(), input)
 		if err != nil {
 			fmt.Println("❌ Error executing stage:", err)
 			return err
 		}
 
-		// ✅ Mark stage as Completed
 		fmt.Printf("✅ Stage %s Completed\n", stage.StageName)
 		if err := ps.Repository.UpdateStageStatus(stage.StageID, "Completed"); err != nil {
 			fmt.Println("❌ Failed to update stage to Completed:", err)
 			return err
 		}
-
-		// ❌ Remove this sleep (already handled in `Execute`)
-		// time.Sleep(5 * time.Second)
 	}
 
 	fmt.Printf("✅ Pipeline completed: %s\n", pipelineID)
 	return ps.updatePipelineStatus(pipelineID, "Completed")
 }
 
-// ✅ Retrieve pipeline status
 func (ps *PipelineService) GetPipelineStatus(pipelineID uuid.UUID) (string, error) {
 	ps.mu.RLock()
 	orchestrator, exists := ps.ParallelOrchestrators[pipelineID]
@@ -149,7 +140,6 @@ func (ps *PipelineService) GetPipelineStatus(pipelineID uuid.UUID) (string, erro
 	return orchestrator.GetStatus(pipelineID)
 }
 
-// ✅ Cancel pipeline execution
 func (ps *PipelineService) CancelPipeline(pipelineID uuid.UUID, userID uuid.UUID) error {
 	ps.mu.RLock()
 	orchestrator, exists := ps.ParallelOrchestrators[pipelineID]
@@ -197,7 +187,6 @@ func (ps *PipelineService) GetPipelinesByUser(userID string) ([]models.Pipelines
 	return ps.Repository.GetPipelinesByUser(userID)
 }
 
-// GetPipelineStages fetches all stages for a given pipeline
 func (ps *PipelineService) GetPipelineStages(pipelineID uuid.UUID) ([]models.Stages, error) {
 	return ps.Repository.GetPipelineStages(pipelineID)
 }

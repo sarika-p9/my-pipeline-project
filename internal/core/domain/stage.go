@@ -50,7 +50,6 @@ func (s *BaseStage) Execute(ctx context.Context, pipelineName string, input inte
 		infrastructure.WebSocket.SendMessage(pipelineName, s.Name, "Running")
 	}
 
-	// ✅ Sleep to simulate execution time
 	time.Sleep(5 * time.Second)
 
 	if s.Status != "Completed" {

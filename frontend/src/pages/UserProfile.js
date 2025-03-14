@@ -121,7 +121,7 @@ const UserProfile = () => {
       textAlign: "center",
       minWidth: "300px",
       maxWidth: "80vw",
-      paddingBottom: "50px", // Corrected unit
+      paddingBottom: "50px", 
     }}
   >
         <Typography variant="h4" gutterBottom>
