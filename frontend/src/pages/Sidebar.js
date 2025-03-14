@@ -64,6 +64,7 @@ const Sidebar = () => {
               key={index}
               sx={{
                 backgroundColor: item.color,
+                fontWeight: "bold",
                 color: "white",
                 p: 1,
                 borderRadius: 3,
@@ -77,7 +78,7 @@ const Sidebar = () => {
               }}
               onClick={() => navigate(item.route)}
             >
-              <Typography variant="subtitle2" sx={{ fontSize: "14px", textAlign: "center", width: "100%" }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: "bold", fontSize: "14px", textAlign: "center", width: "100%" }}>
                 {item.label}
               </Typography>
             </Card>
@@ -102,7 +103,7 @@ const Sidebar = () => {
             onClick={handleLogout}
           >
             <LogoutIcon sx={{ fontSize: 18 }} />  {/* Logout Icon */}
-    <Typography variant="subtitle2" sx={{ fontSize: "14px", textAlign: "center" }}>
+    <Typography variant="subtitle2" sx={{ fontWeight: "bold", fontSize: "14px", textAlign: "center" }}>
       Logout
     </Typography>
           </Card>
