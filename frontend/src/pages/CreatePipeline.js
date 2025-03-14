@@ -72,31 +72,35 @@ const CreatePipeline = () => {
     ws.onopen = () => console.log("✅ WebSocket Connected");
 
     ws.onmessage = (event) => {
-        try {
-            const data = JSON.parse(event.data);
-            console.log("🔄 WebSocket Data Received:", data);
-            if (data.pipelineId === selectedPipelineId) {
-                setSelectedPipelineStages((prevStages) =>
-                    prevStages.map((stage) =>
-                        stage.StageID === data.stageId
-                            ? { ...stage, Status: data.status }
-                            : stage
-                    )
-                );
-                setTimeout(() => {
-                    setSelectedPipelineStages((prevStages) => {
-                        const allCompleted = prevStages.every(stage => stage.Status === "Completed");
-                        if (allCompleted) {
-                            fetchAndUpdatePipelineStatus();
-                        }
-                        return prevStages;
-                    });
-                }, 500);
-            }
-        } catch (error) {
-            console.error("❌ WebSocket Error:", event.data, error);
-        }
-    };
+      try {
+          const data = JSON.parse(event.data);
+          console.log("🔄 WebSocket Data Received:", data);
+  
+          if (data.pipelineId === selectedPipelineId) {
+              setSelectedPipelineStages((prevStages) =>
+                  prevStages.map((stage) =>
+                      stage.StageID === data.stageId
+                          ? { ...stage, Status: data.status }
+                          : stage
+                  )
+              );
+  
+              setTimeout(async () => {
+                  const allCompleted = selectedPipelineStages.every(stage => stage.Status === "Completed");
+                  if (allCompleted) {
+                      console.log("✅ All Stages Completed! Fetching Updated Pipeline Status...");
+                      await fetchAndUpdatePipelineStatus();
+                      setTimeout(() => {
+                          setOpenStageModal(false); // ✅ Auto-close modal if needed
+                      }, 1000);
+                  }
+              }, 500);
+          }
+      } catch (error) {
+          console.error("❌ WebSocket Error:", event.data, error);
+      }
+  };
+  
 
     ws.onerror = (error) => console.error("❌ WebSocket Error:", error);
     ws.onclose = () => console.log("🔴 WebSocket Disconnected");
@@ -236,16 +240,23 @@ const fetchAndUpdatePipelineStatus = async () => {
             setSelectedPipelineId(pipelineId);
             setOpenStageModal(true);
 
-            // ✅ Start WebSocket tracking for this pipeline
             if (socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({ pipelineId, action: "track" }));
             }
 
-            // ✅ **Poll for real-time updates**
+            // ✅ **Poll for updates, but stop when pipeline is completed**
             const intervalId = setInterval(async () => {
                 const updatedResponse = await authAxios.get(`/pipelines/${pipelineId}/stages`);
                 if (Array.isArray(updatedResponse.data)) {
                     setSelectedPipelineStages(updatedResponse.data);
+                    
+                    // ✅ Stop polling if all stages are completed
+                    const allCompleted = updatedResponse.data.every(stage => stage.Status === "Completed");
+                    if (allCompleted) {
+                        console.log("✅ All Stages Completed! Stopping Polling.");
+                        clearInterval(intervalId);
+                        await fetchAndUpdatePipelineStatus();  // ✅ Fetch updated pipeline status
+                    }
                 }
             }, 5000);  // ✅ Poll every 5 seconds
 
@@ -256,6 +267,12 @@ const fetchAndUpdatePipelineStatus = async () => {
     } catch (error) {
         console.error("❌ Failed to fetch pipeline stages:", error);
     }
+};
+
+const handleShowStages = async (pipelineID) => {
+  setSelectedPipelineStages([]); // ✅ Clear previous stages before fetching
+  await fetchPipelineStages(pipelineID);
+  setOpenStageModal(true);
 };
 
 
@@ -474,7 +491,6 @@ const fetchAndUpdatePipelineStatus = async () => {
 };
 
 export default CreatePipeline;
-
 
 
 
