@@ -30,25 +30,12 @@ func NewPipelineService(repo ports.PipelineRepository) *PipelineService {
 func (ps *PipelineService) CreatePipeline(userID uuid.UUID, name string, stageCount int, stageNames []string) (uuid.UUID, error) {
 	pipelineID := uuid.New()
 
-	ps.mu.Lock()
-	orchestrator := domain.NewParallelPipelineOrchestrator(pipelineID, ps.Repository)
-	ps.ParallelOrchestrators[pipelineID] = orchestrator
-	ps.mu.Unlock()
-
-	for i := 0; i < stageCount; i++ {
-		stageName := fmt.Sprintf("Stage-%d", i+1) // ✅ Assign a stage name
-		stage := domain.NewBaseStage(stageName)   // ✅ Ensure this function exists in your domain layer
-
-		log.Printf("Adding Stage: %s (Name: %s) to Pipeline: %s", stage.GetID(), stageName, pipelineID) // Debugging log
-		if err := orchestrator.AddStage(stage); err != nil {
-			return uuid.Nil, err
-		}
-	}
+	fmt.Printf("🚀 Creating Pipeline: %s\n", pipelineID)
 
 	err := ps.Repository.SavePipelineExecution(&models.Pipelines{
 		PipelineID:   pipelineID,
 		UserID:       userID,
-		PipelineName: name, // ✅ Store pipeline name
+		PipelineName: name,
 		Status:       "Created",
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),
@@ -57,44 +44,95 @@ func (ps *PipelineService) CreatePipeline(userID uuid.UUID, name string, stageCo
 		return uuid.Nil, err
 	}
 
+	// ✅ Initialize orchestrator for this pipeline
+	ps.mu.Lock()
+	ps.ParallelOrchestrators[pipelineID] = domain.NewParallelPipelineOrchestrator(pipelineID, ps.Repository)
+	ps.mu.Unlock()
+	fmt.Printf("✅ Orchestrator initialized for pipeline: %s\n", pipelineID)
+
+	// ✅ Insert pipeline stages
+	if err := ps.InsertPipelineStages(pipelineID, stageNames); err != nil {
+		fmt.Println("❌ Error inserting stages:", err)
+		return uuid.Nil, err
+	}
+
 	return pipelineID, nil
+}
+
+// InsertPipelineStages inserts the stages into the database with "Pending" status
+// InsertPipelineStages inserts the stages into the database with "Pending" status
+func (ps *PipelineService) InsertPipelineStages(pipelineID uuid.UUID, stageNames []string) error {
+	fmt.Printf("🔄 Inserting stages for pipeline: %s, Total stages: %d\n", pipelineID, len(stageNames))
+
+	for _, stageName := range stageNames {
+		fmt.Printf("🛠️ Inserting Stage: %s\n", stageName)
+
+		stage := models.Stages{
+			StageID:    uuid.New(),
+			PipelineID: pipelineID,
+			StageName:  stageName,
+			Status:     "Pending",
+		}
+
+		if err := ps.Repository.SaveExecutionLog(&stage); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // ✅ Start pipeline execution based on pipeline ID
 func (ps *PipelineService) StartPipeline(ctx context.Context, userID uuid.UUID, pipelineID uuid.UUID, input interface{}) error {
-	ps.mu.RLock()
+	fmt.Printf("🚀 Received request to start pipeline: %s\n", pipelineID)
+
+	ps.mu.Lock()
 	orchestrator, exists := ps.ParallelOrchestrators[pipelineID]
-	ps.mu.RUnlock()
-
 	if !exists {
-		return errors.New("orchestrator not initialized for this pipeline")
+		fmt.Println("⚠️ Orchestrator not found in memory, reinitializing...")
+		orchestrator = domain.NewParallelPipelineOrchestrator(pipelineID, ps.Repository)
+		ps.ParallelOrchestrators[pipelineID] = orchestrator
 	}
+	ps.mu.Unlock()
 
-	status, err := ps.Repository.GetPipelineStatus(pipelineID.String())
-	if err != nil {
-		log.Printf("Failed to get pipeline status: %v", err)
-		return err
-	}
-	if status != "Created" && status != "Paused" {
-		return errors.New("invalid pipeline status: " + status)
-	}
-
-	// 🚀 Ensure stages are present before execution
-	if len(orchestrator.Stages) == 0 {
-		return errors.New("no stages found for this pipeline execution")
-	}
-
+	fmt.Println("✅ Orchestrator initialized, updating pipeline status to Running...")
 	if err := ps.updatePipelineStatus(pipelineID, "Running"); err != nil {
 		return err
 	}
 
-	stageID, _, err := orchestrator.Execute(ctx, userID, pipelineID, input)
+	fmt.Println("🔄 Fetching pipeline stages...")
+	stages, err := ps.Repository.GetPipelineStages(pipelineID)
 	if err != nil {
-		_ = ps.updatePipelineStatus(pipelineID, "Failed")
-		ps.logExecutionError(pipelineID, stageID, err.Error())
 		return err
 	}
 
+	for _, stage := range stages {
+		fmt.Printf("🔄 Updating stage %s to Running\n", stage.StageName)
+		if err := ps.Repository.UpdateStageStatus(stage.StageID, "Running"); err != nil {
+			fmt.Println("❌ Failed to update stage status:", err)
+			return err
+		}
+
+		// ✅ Create a BaseStage instance and call Execute
+		baseStage := domain.NewBaseStage(stage.StageName) // Initialize BaseStage
+		_, err := baseStage.Execute(ctx, pipelineID.String(), input)
+		if err != nil {
+			fmt.Println("❌ Error executing stage:", err)
+			return err
+		}
+
+		// ✅ Mark stage as Completed
+		fmt.Printf("✅ Stage %s Completed\n", stage.StageName)
+		if err := ps.Repository.UpdateStageStatus(stage.StageID, "Completed"); err != nil {
+			fmt.Println("❌ Failed to update stage to Completed:", err)
+			return err
+		}
+
+		// ❌ Remove this sleep (already handled in `Execute`)
+		// time.Sleep(5 * time.Second)
+	}
+
+	fmt.Printf("✅ Pipeline completed: %s\n", pipelineID)
 	return ps.updatePipelineStatus(pipelineID, "Completed")
 }
 

@@ -87,6 +87,13 @@ func (d *DatabaseAdapter) SaveExecutionLog(logEntry *models.Stages) error {
 	return d.DB.Create(logEntry).Error
 }
 
+func (r *DatabaseAdapter) UpdateStageStatus(stageID uuid.UUID, status string) error {
+	return r.DB.Model(&models.Stages{}).
+		Where("stage_id = ?", stageID).
+		Update("status", status).
+		Error
+}
+
 // GetPipelineStages fetches all stages associated with a pipeline, including names
 func (d *DatabaseAdapter) GetPipelineStages(pipelineID uuid.UUID) ([]models.Stages, error) {
 	var stages []models.Stages

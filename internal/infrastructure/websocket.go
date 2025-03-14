@@ -1,80 +1,84 @@
 package infrastructure
 
 import (
-	"fmt"
-	"sync"
-
+	"encoding/json"
+	"log"
 	"net/http"
+	"sync"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )
 
-// WebSocketManager manages all active connections
 type WebSocketManager struct {
-	Clients   map[*websocket.Conn]bool
-	Broadcast chan string
-	Mutex     sync.Mutex
+	clients   map[*websocket.Conn]bool
+	broadcast chan []byte
+	mu        sync.Mutex
+	upgrader  websocket.Upgrader
 }
 
 var WebSocket = &WebSocketManager{
-	Clients:   make(map[*websocket.Conn]bool),
-	Broadcast: make(chan string),
+	clients:   make(map[*websocket.Conn]bool),
+	broadcast: make(chan []byte),
+	upgrader: websocket.Upgrader{
+		CheckOrigin: func(r *http.Request) bool { return true },
+	},
 }
 
-// WebSocket Upgrader
-var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool { return true },
-}
-
-// WebSocket handler function
+// Handle new WebSocket connections
 func (wm *WebSocketManager) HandleConnections(c *gin.Context) {
-	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	conn, err := wm.upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
-		fmt.Println("❌ Failed to upgrade WebSocket connection:", err)
+		log.Println("WebSocket upgrade failed:", err)
 		return
 	}
 	defer conn.Close()
 
-	wm.Mutex.Lock()
-	wm.Clients[conn] = true
-	wm.Mutex.Unlock()
-
-	fmt.Println("✅ New WebSocket client connected")
+	wm.mu.Lock()
+	wm.clients[conn] = true
+	wm.mu.Unlock()
 
 	for {
-		_, _, err := conn.ReadMessage()
+		_, msg, err := conn.ReadMessage()
 		if err != nil {
-			wm.Mutex.Lock()
-			delete(wm.Clients, conn)
-			wm.Mutex.Unlock()
-			fmt.Println("❌ WebSocket client disconnected")
+			wm.mu.Lock()
+			delete(wm.clients, conn)
+			wm.mu.Unlock()
 			break
 		}
+		wm.broadcast <- msg
 	}
 }
 
-// Broadcast messages to all clients
-func (wm *WebSocketManager) BroadcastMessage(message string) {
-	wm.Mutex.Lock()
-	defer wm.Mutex.Unlock()
-
-	for client := range wm.Clients {
-		err := client.WriteMessage(websocket.TextMessage, []byte(message))
-		if err != nil {
-			fmt.Println("❌ Failed to send message to WebSocket client:", err)
-			client.Close()
-			delete(wm.Clients, client)
-		}
-	}
-}
-
-// Start the WebSocket broadcast listener
+// Start broadcasting messages to all clients
 func (wm *WebSocketManager) StartBroadcaster() {
-	go func() {
-		for {
-			msg := <-wm.Broadcast
-			wm.BroadcastMessage(msg)
+	for {
+		msg := <-wm.broadcast
+		wm.mu.Lock()
+		for client := range wm.clients {
+			err := client.WriteMessage(websocket.TextMessage, msg)
+			if err != nil {
+				client.Close()
+				delete(wm.clients, client)
+			}
 		}
-	}()
+		wm.mu.Unlock()
+	}
+}
+
+// Send message to all connected clients
+func (wm *WebSocketManager) SendMessage(pipelineName, stageName, status string) {
+	message := map[string]string{
+		"pipeline_name": pipelineName,
+		"stage_name":    stageName,
+		"status":        status,
+	}
+
+	jsonMessage, err := json.Marshal(message)
+	if err != nil {
+		log.Println("Error marshalling WebSocket message:", err)
+		return
+	}
+
+	wm.broadcast <- jsonMessage
 }

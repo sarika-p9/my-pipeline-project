@@ -24,6 +24,7 @@ type CreatePipelineRequest struct {
 }
 
 // CreatePipeline handles pipeline creation
+// CreatePipeline handles pipeline creation
 func (h *PipelineHandler) CreatePipeline(c *gin.Context) {
 	var req CreatePipelineRequest
 
@@ -33,6 +34,7 @@ func (h *PipelineHandler) CreatePipeline(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
 	}
+
 	fmt.Printf("📥 Received CreatePipeline Request: %+v\n", req)
 
 	if req.UserID == "" {
@@ -48,11 +50,6 @@ func (h *PipelineHandler) CreatePipeline(c *gin.Context) {
 		return
 	}
 
-	// Default is_parallel to true if not provided
-	if !c.Request.URL.Query().Has("is_parallel") {
-		req.IsParallel = true
-	}
-
 	// Convert UserID (string) to uuid.UUID
 	userUUID, err := uuid.Parse(req.UserID)
 	if err != nil {
@@ -64,7 +61,7 @@ func (h *PipelineHandler) CreatePipeline(c *gin.Context) {
 	// ✅ Log details before creating pipeline
 	fmt.Printf("🛠️ Creating Pipeline: Name=%s, Stages=%d, UserID=%s, StageNames=%v\n", req.Name, req.Stages, userUUID, req.StageNames)
 
-	// ✅ Call service to create pipeline
+	// ✅ Call service to create pipeline (stages inserted inside service)
 	pipelineID, err := h.Service.CreatePipeline(userUUID, req.Name, req.Stages, req.StageNames)
 	if err != nil {
 		fmt.Println("❌ Failed to create pipeline:", err)
@@ -73,11 +70,11 @@ func (h *PipelineHandler) CreatePipeline(c *gin.Context) {
 	}
 
 	// ✅ Log success
-	fmt.Println("✅ Pipeline Created Successfully, ID:", pipelineID)
+	fmt.Println("✅ Pipeline and Stages Created Successfully, ID:", pipelineID)
 
 	// Return response
 	c.JSON(http.StatusAccepted, gin.H{
-		"message":     "Pipeline created",
+		"message":     "Pipeline and stages created",
 		"pipeline_id": pipelineID.String(),
 	})
 }
@@ -108,6 +105,7 @@ func (h *PipelineHandler) StartPipeline(c *gin.Context) {
 		return
 	}
 
+	// ✅ Only start the pipeline now, do NOT insert stages
 	go func() {
 		h.Service.StartPipeline(context.Background(), userID, pipelineID, req.Input)
 	}()

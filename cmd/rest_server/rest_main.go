@@ -125,6 +125,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 	"github.com/joho/godotenv"
 	"github.com/nats-io/nats.go"
 	proto "github.com/sarika-p9/my-pipeline-project/api/grpc/proto/authentication"
@@ -146,6 +147,11 @@ var (
 	rabbitMQChannel *amqp.Channel
 	natsConn        *nats.Conn
 )
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		return true // Allow connections from any origin
+	},
+}
 
 func RESTServer(authService *services.AuthService, pipelineService *services.PipelineService, wg *sync.WaitGroup) {
 	defer wg.Done()

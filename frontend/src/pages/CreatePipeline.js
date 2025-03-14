@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { 
   AppBar, Toolbar, Typography, Button, Container, Box, Dialog, DialogTitle, DialogContent, DialogActions,
   Menu, MenuItem, ToggleButton, ToggleButtonGroup, IconButton, Table, TableHead, TableBody, TableRow, TableCell, TextField 
@@ -10,9 +10,6 @@ import { useNavigate } from "react-router-dom";
 import Sidebar from "../pages/Sidebar";
 import CircularProgress from "@mui/material/CircularProgress";
 import Topbar from "../components/Topbar";
-const WebSocket_URL = "ws://localhost:8080/ws";
-
-
 
 const isTokenExpired = () => {
   const token = localStorage.getItem("token");
@@ -68,30 +65,123 @@ const CreatePipeline = () => {
     fetchUserPipelines();
   }, []);
 
+
   useEffect(() => {
-    const ws = new WebSocket(WebSocket_URL);
-    ws.onopen = () => console.log("WebSocket Connected");
+    const ws = new WebSocket("ws://127.0.0.1:8080/ws");
+
+    ws.onopen = () => console.log("✅ WebSocket Connected");
+
     ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      console.log("Received WebSocket Data:", data);
-      setSelectedPipelineStages((prevStages) =>
-        prevStages.map((stage) =>
-          stage.StageID === data.StageID ? { ...stage, Status: data.Status } : stage
-        )
-      );
+        try {
+            const data = JSON.parse(event.data);
+            console.log("🔄 WebSocket Data Received:", data);
+
+            // ✅ Ensure we only update stages for the selected pipeline
+            if (data.pipelineId === selectedPipelineId) {
+                setSelectedPipelineStages((prevStages) =>
+                    prevStages.map((stage) =>
+                        stage.StageID === data.stageId
+                            ? { ...stage, Status: data.status }
+                            : stage
+                    )
+                );
+
+                // ✅ Check if all stages are completed, then update the pipeline status
+                setTimeout(() => {
+                    setSelectedPipelineStages((prevStages) => {
+                        const allCompleted = prevStages.every(stage => stage.Status === "Completed");
+                        if (allCompleted) {
+                            fetchAndUpdatePipelineStatus();
+                        }
+                        return prevStages;
+                    });
+                }, 500);
+            }
+        } catch (error) {
+            console.error("❌ WebSocket Error:", event.data, error);
+        }
     };
-    ws.onerror = (error) => console.error("WebSocket Error:", error);
-    ws.onclose = () => console.log("WebSocket Disconnected");
+
+    ws.onerror = (error) => console.error("❌ WebSocket Error:", error);
+    ws.onclose = () => console.log("🔴 WebSocket Disconnected");
+
     setSocket(ws);
     return () => ws.close();
+}, [selectedPipelineId]);  // ✅ Add dependency to ensure it updates correctly
+
+
+
+  const setupWebSocket = (pipelineId) => {
+    const ws = new WebSocket("ws://127.0.0.1:8080/ws");
+
+    ws.onopen = () => console.log("✅ WebSocket Connected");
+
+    ws.onmessage = (event) => {
+        try {
+            const data = JSON.parse(event.data);
+            console.log("🔄 WebSocket Data Received:", data);
+
+            setSelectedPipelineStages((prevStages) => 
+                prevStages.map((stage) => 
+                    stage.StageName === data.stage_name ? { ...stage, Status: data.status } : stage
+                )
+            );
+
+            // ✅ **Check if All Stages are Completed, Then Update Pipeline**
+            setTimeout(() => {
+                setSelectedPipelineStages((prevStages) => {
+                    const allCompleted = prevStages.every(stage => stage.Status === "Completed");
+                    if (allCompleted) {
+                        fetchAndUpdatePipelineStatus(); // ✅ Update pipeline status
+                    }
+                    return prevStages;
+                });
+            }, 500);
+
+        } catch (error) {
+            console.error("❌ WebSocket Error:", event.data, error);
+        }
+    };
+
+    ws.onerror = (error) => console.error("❌ WebSocket Error:", error);
+    ws.onclose = () => console.log("🔴 WebSocket Disconnected");
+};
+
+
+
+
+const fetchAndUpdatePipelineStatus = async () => {
+  try {
+      const response = await authAxios.get(`/pipelines?user_id=${user_id}`);
+      if (Array.isArray(response.data)) {
+          setPipelines(response.data);
+      }
+  } catch (error) {
+      console.error("❌ Failed to update pipeline status:", error);
+  }
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  const authAxios = useMemo(() => {
+    return axios.create({
+      baseURL: "http://localhost:8080",
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+    });
   }, []);
-
-
-  const authAxios = axios.create({
-    baseURL: "http://localhost:8080",
-    headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-  });
-
 
 
   const fetchUserPipelines = async () => {
@@ -142,32 +232,52 @@ const CreatePipeline = () => {
 
   const handlePipelineAction = async (pipelineId, status) => {
     try {
-      if (status === "Running") {
-        await authAxios.post(`/pipelines/${pipelineId}/cancel`, {
-          user_id: getUserIdFromToken(),
-          is_parallel: true,
-        });
-      } else if (status === "Completed") {
-        alert("Completed pipelines cannot be started again.");
-        return;
-      } else {
-        await authAxios.post(`/pipelines/${pipelineId}/start`, {
-          user_id: getUserIdFromToken(),
-          input: { raw_material: "Steel", quantity: 100 },
-          is_parallel: true,
-        });
-        fetchPipelineStages(pipelineId);
-      }
-      setPipelines((prevPipelines) =>
-        prevPipelines.map((pipeline) =>
-          pipeline.PipelineID === pipelineId ? { ...pipeline, Status: "Running" } : pipeline
-        )
-      );
+        console.log("🚀 Starting pipeline:", pipelineId, "Current Status:", status);
+
+        const payload = {
+            user_id: user_id,
+            input: { raw_material: "Steel", quantity: 100 },
+            is_parallel: isParallel,
+        };
+
+        console.log("📤 Sending Request:", JSON.stringify(payload, null, 2));
+
+        if (status === "Running") {
+            await authAxios.post(`/pipelines/${pipelineId}/cancel`, payload);
+        } else if (status === "Completed") {
+            alert("Completed pipelines cannot be started again.");
+            return;
+        } else {
+            const response = await authAxios.post(`/pipelines/${pipelineId}/start`, payload);
+            console.log("✅ Response:", response.data);
+        }
+
+        setPipelines((prevPipelines) =>
+            prevPipelines.map((pipeline) =>
+                pipeline.PipelineID === pipelineId ? { ...pipeline, Status: "Running" } : pipeline
+            )
+        );
+
+        await fetchPipelineStages(pipelineId);
+
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({ pipelineId, action: "start" }));
+        }
+
+        setTimeout(fetchUserPipelines, 1000);
     } catch (error) {
-      console.error("Failed to update pipeline status", error);
-      alert(`Error: ${error.response?.data?.error || "Unknown error"}`);
+        console.error("❌ Failed to update pipeline status:", error.response?.data || error);
     }
-  };
+};
+
+
+const handleShowStages = async (pipelineID) => {
+  await fetchPipelineStages(pipelineID);
+  setOpenStageModal(true);
+};
+
+
+  
   
 
   const handleSaveStageNames = () => {
@@ -179,34 +289,49 @@ const CreatePipeline = () => {
   };
   
 
-  const fetchPipelineStages = async (pipelineID) => {
-    if (isTokenExpired()) {
-      console.error("Token is expired. Please log in again.");
-      navigate("/login");
-      return;
-    }
-    const token = localStorage.getItem("token");
-    if (!token) {
-      console.error("Token is missing. Please log in.");
-      navigate("/login");
-      return;
-    }
+
+  const fetchPipelineStages = async (pipelineId) => {
     try {
-      const response = await fetch(`http://localhost:8080/pipelines/${pipelineID}/stages`, {
-        method: "GET",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-      if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-      const data = await response.json();
-      setSelectedPipelineStages(data);
-      setOpenStageModal(true);
+        console.log(`📥 Fetching stages for pipeline: ${pipelineId}`);
+
+        const response = await authAxios.get(`/pipelines/${pipelineId}/stages`);
+
+        if (Array.isArray(response.data)) {
+            const initializedStages = response.data.map(stage => ({
+                StageID: stage.StageID,
+                StageName: stage.StageName || "Unknown",
+                Status: stage.Status || "Pending",
+            }));
+
+            setSelectedPipelineStages(initializedStages);
+            setSelectedPipelineId(pipelineId);
+            setOpenStageModal(true);
+
+            // ✅ Start WebSocket tracking for this pipeline
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ pipelineId, action: "track" }));
+            }
+
+            // ✅ **Poll for real-time updates**
+            const intervalId = setInterval(async () => {
+                const updatedResponse = await authAxios.get(`/pipelines/${pipelineId}/stages`);
+                if (Array.isArray(updatedResponse.data)) {
+                    setSelectedPipelineStages(updatedResponse.data);
+                }
+            }, 5000);  // ✅ Poll every 5 seconds
+
+            return () => clearInterval(intervalId);
+        } else {
+            console.error("❌ Unexpected response format:", response.data);
+        }
     } catch (error) {
-      console.error("Error fetching pipeline stages:", error);
+        console.error("❌ Failed to fetch pipeline stages:", error);
     }
-  };
+};
+
+
+
+
     
 
   const handleStageNameChange = (index, value) => {
@@ -261,11 +386,15 @@ const CreatePipeline = () => {
                     <TableCell>{pipeline.PipelineName}</TableCell>
                     <TableCell>{pipeline.PipelineID}</TableCell>
                     <TableCell>
-                      <Typography
-                        sx={{ fontWeight: "bold", color: pipeline.Status === "Running" ? "green" : "gray" }}
-                      >
-                        {pipeline.Status}
-                      </Typography>
+                    <Typography
+  sx={{
+    fontWeight: "bold",
+    color: pipelineStatus[pipeline.PipelineID] === "Running" ? "green" : "gray",
+  }}
+>
+  {pipelineStatus[pipeline.PipelineID] || pipeline.Status}
+</Typography>
+
                     </TableCell>
                     <TableCell>
                       <Button
@@ -277,10 +406,14 @@ const CreatePipeline = () => {
                       </Button>
                       {pipeline.Status !== "Created" && (
                       <Button
-                        variant="outlined"
-                        sx={{ ml: 2 }}
-                        onClick={() => fetchPipelineStages(pipeline.PipelineID)}
-                      >
+                      variant="outlined"
+                      sx={{ ml: 2 }}
+                      onClick={() => {
+                          console.log("🔎 Show Stages clicked for pipeline:", pipeline.PipelineID);
+                          fetchPipelineStages(pipeline.PipelineID);
+                          setOpenStageModal(true);  // ✅ Ensure modal opens every time
+                      }}
+                  >
                         Show Stages
                       </Button>
                       )}
@@ -305,35 +438,48 @@ const CreatePipeline = () => {
         </Box>
 
         <Dialog open={openStageModal} onClose={() => setOpenStageModal(false)}>
-          <DialogTitle>Pipeline Stages</DialogTitle>
-          <DialogContent>
-            {selectedPipelineStages.length > 0 ? (
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell><strong>Stage ID</strong></TableCell>
-                    <TableCell><strong>Stage Name</strong></TableCell>
-                    <TableCell><strong>Status</strong></TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {selectedPipelineStages.map((stage) => (
-                    <TableRow key={stage.StageID}>
-                      <TableCell>{stage.StageID}</TableCell>
-                      <TableCell>{stage.StageName}</TableCell>
-                      <TableCell>{stage.Status}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            ) : (
-              <Typography>No stages found for this pipeline.</Typography>
-            )}
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setOpenStageModal(false)}>Close</Button>
-          </DialogActions>
-        </Dialog>
+  <DialogTitle>Pipeline Stages</DialogTitle>
+  <DialogContent>
+    {selectedPipelineStages.length > 0 ? (
+      <Table>
+        <TableHead>
+          <TableRow>
+            <TableCell><strong>Stage ID</strong></TableCell>
+            <TableCell><strong>Stage Name</strong></TableCell>
+            <TableCell><strong>Status</strong></TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+        {selectedPipelineStages.map((stage, index) => (
+    <TableRow key={stage.StageID || `stage-${index}`}>
+
+
+              <TableCell>{stage.StageID}</TableCell>
+              <TableCell>{stage.StageName}</TableCell>
+              <TableCell>
+                <Typography sx={{ fontWeight: "bold", color: 
+                  stage.Status === "Running" ? "blue" :
+                  stage.Status === "Completed" ? "green" : 
+                  "gray"
+                }}>
+                  {stage.Status}
+                </Typography>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    ) : (
+      <Typography>No stages found for this pipeline.</Typography>
+    )}
+  </DialogContent>
+  <DialogActions>
+    <Button onClick={() => setOpenStageModal(false)}>Close</Button>
+  </DialogActions>
+</Dialog>
+
+
+
   
         <Box sx={{ mt: 5, p: 3, boxShadow: 3, borderRadius: 2 }}>
           <Typography variant="h5" sx={{ mb: 2 }}>Create New Pipeline</Typography>

@@ -2,7 +2,6 @@ package domain
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"log"
 	"time"
@@ -46,25 +45,18 @@ func (s *BaseStage) GetName() string {
 func (s *BaseStage) Execute(ctx context.Context, pipelineName string, input interface{}) (interface{}, error) {
 	log.Printf("Executing stage: %s (%s) for pipeline: %s", s.Name, s.ID, pipelineName)
 
-	// Update status to "Running"
-	s.Status = "Running"
-	message, _ := json.Marshal(StageStatus{
-		PipelineName: pipelineName,
-		StageName:    s.Name,
-		Status:       "Running",
-	})
-	infrastructure.WebSocket.Broadcast <- string(message)
+	if s.Status != "Running" {
+		s.Status = "Running"
+		infrastructure.WebSocket.SendMessage(pipelineName, s.Name, "Running")
+	}
 
-	time.Sleep(5 * time.Second) // Simulating execution
+	// ✅ Sleep to simulate execution time
+	time.Sleep(5 * time.Second)
 
-	// Update status to "Completed"
-	s.Status = "Completed"
-	message, _ = json.Marshal(StageStatus{
-		PipelineName: pipelineName,
-		StageName:    s.Name,
-		Status:       "Completed",
-	})
-	infrastructure.WebSocket.Broadcast <- string(message)
+	if s.Status != "Completed" {
+		s.Status = "Completed"
+		infrastructure.WebSocket.SendMessage(pipelineName, s.Name, "Completed")
+	}
 
 	return input, nil
 }

@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/sarika-p9/my-pipeline-project/internal/core/ports"
+	"github.com/sarika-p9/my-pipeline-project/internal/infrastructure"
 	"github.com/sarika-p9/my-pipeline-project/internal/models"
 )
 
@@ -52,7 +53,7 @@ func (p *ParallelPipelineOrchestrator) Execute(ctx context.Context, userID uuid.
 		return pipelineID, nil, errors.New("user does not exist")
 	}
 
-	// ✅ Step 2: Update pipeline execution status instead of inserting a new record
+	// ✅ Step 2: Update pipeline execution status
 	pipeline, err := p.dbRepo.GetPipelineByID(pipelineID)
 	if err != nil {
 		log.Printf("Failed to fetch pipeline details: %v", err)
@@ -61,7 +62,7 @@ func (p *ParallelPipelineOrchestrator) Execute(ctx context.Context, userID uuid.
 
 	if err := p.dbRepo.UpdatePipelineExecution(&models.Pipelines{
 		PipelineID:   pipelineID,
-		PipelineName: pipeline.PipelineName, // ✅ Ensure the name is included
+		PipelineName: pipeline.PipelineName,
 		Status:       "Running",
 		UpdatedAt:    time.Now(),
 	}); err != nil {
@@ -69,7 +70,7 @@ func (p *ParallelPipelineOrchestrator) Execute(ctx context.Context, userID uuid.
 		return pipelineID, nil, err
 	}
 
-	// ✅ Step 3: Execute stages in parallel
+	// ✅ Step 3: Execute stages in parallel with WebSocket updates
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	results := make([]interface{}, 0, len(p.Stages))
@@ -79,10 +80,16 @@ func (p *ParallelPipelineOrchestrator) Execute(ctx context.Context, userID uuid.
 		wg.Add(1)
 		go func(stage Stage) {
 			defer wg.Done()
+
+			stageName := stage.GetName()
+
+			// 🚀 Send WebSocket update: Stage is running
+			infrastructure.WebSocket.SendMessage(pipeline.PipelineName, stageName, "Running")
+
 			result, err := stage.Execute(ctx, pipeline.PipelineName, input)
 			logEntry := &models.Stages{
 				StageID:    stage.GetID(),
-				StageName:  stage.GetName(),
+				StageName:  stageName,
 				PipelineID: pipelineID,
 				Status:     "Completed",
 				Timestamp:  time.Now(),
@@ -91,10 +98,17 @@ func (p *ParallelPipelineOrchestrator) Execute(ctx context.Context, userID uuid.
 			if err != nil {
 				logEntry.Status = "Failed"
 				logEntry.ErrorMsg = err.Error()
+
+				// ❌ Send WebSocket update: Stage failed
+				infrastructure.WebSocket.SendMessage(pipeline.PipelineName, stageName, "Failed")
+
 				mu.Lock()
 				errorsSlice = append(errorsSlice, err)
 				mu.Unlock()
 			} else {
+				// ✅ Send WebSocket update: Stage completed
+				infrastructure.WebSocket.SendMessage(pipeline.PipelineName, stageName, "Completed")
+
 				mu.Lock()
 				results = append(results, result)
 				mu.Unlock()
@@ -109,8 +123,7 @@ func (p *ParallelPipelineOrchestrator) Execute(ctx context.Context, userID uuid.
 
 	wg.Wait()
 
-	// ✅ Step 4: Update pipeline execution status in DB based on results
-	// ✅ Step 4: Update pipeline execution status in DB based on results
+	// ✅ Step 4: Update final pipeline status
 	finalStatus := "Completed"
 	if len(errorsSlice) > 0 {
 		finalStatus = "Failed"
@@ -118,7 +131,7 @@ func (p *ParallelPipelineOrchestrator) Execute(ctx context.Context, userID uuid.
 
 	if err := p.dbRepo.UpdatePipelineExecution(&models.Pipelines{
 		PipelineID:   pipelineID,
-		PipelineName: pipeline.PipelineName, // ✅ Ensure name persists
+		PipelineName: pipeline.PipelineName,
 		Status:       finalStatus,
 		UpdatedAt:    time.Now(),
 	}); err != nil {
