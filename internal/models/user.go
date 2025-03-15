@@ -8,7 +8,7 @@ import (
 
 type User struct {
 	UserID    uuid.UUID `gorm:"column:user_id;type:uuid;primaryKey"`
-	Name      string    `gorm:"type:varchar(100)"`
+	Name      string    `gorm:"type:varchar(100)";not null;default:'Sarika Gautam'`
 	Email     string    `gorm:"type:varchar(100);unique;not null"`
 	Role      string    `gorm:"type:varchar(20);not null;default:'worker';check:role IN ('super_admin', 'admin', 'manager', 'worker')"`
 	CreatedAt time.Time `gorm:"autoCreateTime"`

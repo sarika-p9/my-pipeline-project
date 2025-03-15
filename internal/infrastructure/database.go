@@ -21,6 +21,7 @@ func InitDatabase() {
 	if dsn == "" {
 		log.Fatal("POSTGRES_DSN environment variable is not set")
 	}
+	fmt.Println("Using DSN:", dsn)
 	log.Printf("Connecting to database: %s", dsn)
 	var err error
 	DB, err = gorm.Open(postgres.New(postgres.Config{

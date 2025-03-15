@@ -3,17 +3,11 @@ package main
 import (
 	"log"
 
-	"github.com/spf13/cobra"
+	"github.com/sarika-p9/my-pipeline-project/cmd/democtl/cmd"
 )
 
 func main() {
-	var rootCmd = &cobra.Command{Use: "democtl"}
-	rootCmd.AddCommand(startCmd)
-	rootCmd.AddCommand(registerCmd)
-	rootCmd.AddCommand(loginCmd)
-	rootCmd.AddCommand(pipelineCmd)
-
-	if err := rootCmd.Execute(); err != nil {
+	if err := cmd.Execute(); err != nil {
 		log.Fatalf("Error executing command: %v", err)
 	}
 }
