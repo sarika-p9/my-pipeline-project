@@ -33,7 +33,7 @@ const Dashboard = () => {
   }, []);
 
   const authAxios = axios.create({
-    baseURL: "http://localhost:8080",
+    baseURL: "http://localhost:30002",
     headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
   });
 

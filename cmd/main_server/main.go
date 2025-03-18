@@ -126,7 +126,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"github.com/joho/godotenv"
+
+	// "github.com/joho/godotenv"
 	"github.com/nats-io/nats.go"
 	proto "github.com/sarika-p9/my-pipeline-project/api/grpc/proto/authentication"
 	pipeline_proto "github.com/sarika-p9/my-pipeline-project/api/grpc/proto/pipeline"
@@ -162,18 +163,28 @@ func RESTServer(authService *services.AuthService, pipelineService *services.Pip
 	r := gin.Default()
 	r.Use(func(c *gin.Context) {
 		origin := c.Request.Header.Get("Origin")
-		if origin == "http://localhost:3000" {
+
+		// Allow both localhost and Kubernetes frontend service
+		allowedOrigins := map[string]bool{
+			"http://localhost:3000":        true, // Local Dev
+			"http://localhost:30001":       true, // Kubernetes Frontend
+			"http://frontend-service:8080": true, // Internal Cluster URL
+		}
+
+		if allowedOrigins[origin] {
 			c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
 			c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
 			c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 			c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 		}
+
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(http.StatusOK)
 			return
 		}
 		c.Next()
 	})
+
 	r.POST("/register", gin.WrapF(authHandler.RegisterHandler))
 	r.POST("/login", gin.WrapF(authHandler.LoginHandler))
 	r.POST("/logout", authHandler.LogoutHandler)
@@ -250,9 +261,12 @@ func GRPCServer(authService *services.AuthService, pipelineService *services.Pip
 // }
 
 func main() {
-	if err := godotenv.Load(); err != nil {
-		log.Println("Warning: No .env file found. Proceeding with existing environment variables.")
-	}
+	// if os.Getenv("K8S_ENV") != "true" { // Only load .env if not in Kubernetes
+	// 	if err := godotenv.Load(); err != nil {
+	// 		log.Println("No .env file found, using environment variables")
+	// 	}
+	// }
+
 	infrastructure.InitDatabase()
 	db := infrastructure.GetDB()
 	dbRepo := secondary.NewDatabaseAdapter(db)
@@ -260,7 +274,7 @@ func main() {
 	pipelineService := services.NewPipelineService(dbRepo)
 
 	go func() {
-		rabbitURL := "amqp://guest:guest@localhost:5672/"
+		rabbitURL := "amqp://guest:guest@rabbitmq:5672/"
 		var err error
 		rabbitMQConn, rabbitMQChannel, err = messaging.ConnectRabbitMQ(rabbitURL)
 		if err != nil {
@@ -270,7 +284,7 @@ func main() {
 		defer rabbitMQConn.Close()
 	}()
 	go func() {
-		natsURL := "nats://localhost:4222"
+		natsURL := "nats://nats:4222"
 		natsConn = infrastructure.ConnectNATS(natsURL)
 		defer natsConn.Close()
 	}()

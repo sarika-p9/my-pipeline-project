@@ -2,12 +2,10 @@ package cmd
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 
-	"github.com/joho/godotenv"
 	"github.com/spf13/cobra"
 )
 
@@ -16,10 +14,12 @@ var startCmd = &cobra.Command{
 	Short: "Start the main API server",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("Starting main_api_server...")
-		err := godotenv.Load("../main_server/.env")
-		if err := godotenv.Load(".env"); err != nil {
-			log.Println("Warning: Could not load .env file. Using system environment variables.")
-		}
+		// if os.Getenv("K8S_ENV") != "true" { // Only load .env if not in Kubernetes
+		// 	if err := godotenv.Load(); err != nil {
+		// 		log.Println("No .env file found, using environment variables")
+		// 	}
+		// }
+
 		mainServerPath, err := filepath.Abs("../main_server/main_api_server")
 		if err != nil {
 			fmt.Println("Error resolving main_api_server path:", err)

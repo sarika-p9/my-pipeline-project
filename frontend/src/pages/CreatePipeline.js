@@ -70,7 +70,7 @@ const CreatePipeline = () => {
   useEffect(() => {
     if (!selectedPipelineId) return;
 
-    const ws = new WebSocket("ws://127.0.0.1:8080/ws");
+    const ws = new WebSocket("ws://localhost:30002/ws");
 
     ws.onopen = () => console.log("✅ WebSocket Connected");
 
@@ -168,7 +168,7 @@ const fetchAndUpdatePipelineStatus = async () => {
 
   const authAxios = useMemo(() => {
     return axios.create({
-      baseURL: "http://localhost:8080",
+      baseURL: "http://localhost:30002",
       headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
     });
   }, []);
@@ -342,7 +342,7 @@ const handleShowStages = async (pipelineID) => {
     if (!window.confirm("Are you sure you want to delete this pipeline?")) return;
   
     try {
-      await axios.delete(`http://localhost:8080/api/pipelines/${pipelineId}`);
+      await axios.delete(`http://localhost:30002/api/pipelines/${pipelineId}`);
       
       setPipelines(pipelines.filter(pipeline => pipeline.PipelineID !== pipelineId));
     } catch (error) {

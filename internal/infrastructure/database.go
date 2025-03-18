@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/joho/godotenv"
+	// "github.com/joho/godotenv"
 	"github.com/sarika-p9/my-pipeline-project/internal/models"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -14,9 +14,12 @@ import (
 var DB *gorm.DB
 
 func InitDatabase() {
-	if err := godotenv.Load(); err != nil {
-		log.Println("Warning: No .env file found. Using system environment variables.")
-	}
+	// if os.Getenv("K8S_ENV") != "true" { // Only load .env if not in Kubernetes
+	// 	if err := godotenv.Load(); err != nil {
+	// 		log.Println("No .env file found, using environment variables")
+	// 	}
+	// }
+
 	dsn := os.Getenv("POSTGRES_DSN")
 	if dsn == "" {
 		log.Fatal("POSTGRES_DSN environment variable is not set")

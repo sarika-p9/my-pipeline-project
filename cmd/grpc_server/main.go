@@ -8,7 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/joho/godotenv"
+	// "github.com/joho/godotenv"
 	"github.com/nats-io/nats.go"
 	"github.com/streadway/amqp"
 	"google.golang.org/grpc"
@@ -30,9 +30,11 @@ var (
 )
 
 func main() {
-	if err := godotenv.Load(); err != nil {
-		log.Println("Warning: No .env file found. Proceeding with existing environment variables.")
-	}
+	// if os.Getenv("K8S_ENV") != "true" { // Only load .env if not in Kubernetes
+	// 	if err := godotenv.Load(); err != nil {
+	// 		log.Println("No .env file found, using environment variables")
+	// 	}
+	// }
 
 	infrastructure.InitDatabase()
 
