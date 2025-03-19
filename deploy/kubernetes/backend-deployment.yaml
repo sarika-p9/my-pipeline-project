@@ -17,6 +17,7 @@ spec:
           image: sarikapt9/my-backend:latest
           ports:
             - containerPort: 8080
+            - containerPort: 50051
           env:
             - name: POSTGRES_DSN
               valueFrom:
@@ -46,8 +47,14 @@ spec:
   selector:
     app: backend
   ports:
-    - protocol: TCP
+    - name: rest
+      protocol: TCP
       port: 8080
       targetPort: 8080
-      nodePort: 30002  # Exposes backend on NodePort
-  type: NodePort  # Exposes backend outside cluster
+      nodePort: 30002  # HTTP API
+    - name: grpc
+      protocol: TCP
+      port: 50051
+      targetPort: 50051
+      nodePort: 30003  # Exposes gRPC on NodePort
+  type: NodePort
