@@ -101,6 +101,9 @@ const LoginPage = ({ apiType }) => {
         localStorage.setItem("user_id", payload.sub);
   
         navigate("/dashboard");
+        setTimeout(() => {
+          window.location.reload();
+        }, 100);
       } catch (error) {
         console.error("Login failed:", error);
         setMessage("Login failed. Please check your credentials.");
