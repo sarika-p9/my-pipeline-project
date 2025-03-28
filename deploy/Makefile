@@ -4,39 +4,54 @@ IMAGE_TAG=latest
 # Paths to Dockerfiles
 BACKEND_DOCKERFILE=deploy/docker/backend.Dockerfile
 FRONTEND_DOCKERFILE=deploy/docker/frontend.Dockerfile
-DEMOCTL_DOCKERFILE=deploy/docker/democtl.Dockerfile
 
-# Build Backend Image
+# Local Build
 build-backend:
-	docker build -t $(DOCKER_REGISTRY)/backend:$(IMAGE_TAG) -f $(BACKEND_DOCKERFILE) .
+	docker build -f backend.Dockerfile -t my-backend:$(IMAGE_TAG) ../..
 
-# Build Frontend Image
 build-frontend:
-	docker build -t $(DOCKER_REGISTRY)/frontend:$(IMAGE_TAG) -f $(FRONTEND_DOCKERFILE) .
+	docker build -f $(FRONTEND_DOCKERFILE) -t my-frontend:$(IMAGE_TAG) .
 
-# Build Democtl CLI Image
-build-democtl:
-	docker build -t $(DOCKER_REGISTRY)/democtl:$(IMAGE_TAG) -f $(DEMOCTL_DOCKERFILE) .
+# Tag Images
+tag-backend:
+	docker tag my-backend:$(IMAGE_TAG) $(DOCKER_REGISTRY)/my-backend:$(IMAGE_TAG)
 
-# Push Backend Image
-push-backend:
-	docker push $(DOCKER_REGISTRY)/backend:$(IMAGE_TAG)
+tag-frontend:
+	docker tag my-frontend:$(IMAGE_TAG) $(DOCKER_REGISTRY)/my-frontend:$(IMAGE_TAG)
 
-# Push Frontend Image
-push-frontend:
-	docker push $(DOCKER_REGISTRY)/frontend:$(IMAGE_TAG)
+# Docker Login
+docker-login:
+	docker login
 
-# Push Democtl CLI Image
-push-democtl:
-	docker push $(DOCKER_REGISTRY)/democtl:$(IMAGE_TAG)
+# Push Images
+push-backend: tag-backend docker-login
+	docker push $(DOCKER_REGISTRY)/my-backend:$(IMAGE_TAG)
 
-# Deploy Kubernetes Resources
+push-frontend: tag-frontend docker-login
+	docker push $(DOCKER_REGISTRY)/my-frontend:$(IMAGE_TAG)
+
+# Kubernetes Deployment
 apply-k8s:
-	kubectl apply -f deploy/kubernetes/
+	kubectl apply -f backend-deployment.yaml
+	kubectl apply -f frontend-deployment.yaml
+	kubectl apply -f rabbitmq-deployment.yaml
+	kubectl apply -f nats-deployment.yaml
 
-# Delete Kubernetes Resources
-delete-k8s:
-	kubectl delete -f deploy/kubernetes/
+restart-deployments:
+	kubectl get deployments --no-headers -o custom-columns=":metadata.name" | xargs -I{} kubectl rollout restart deployment {}
+
+delete-all:
+	kubectl delete all --all --namespace=default
+
+get-all:
+	kubectl get all
+
+# Port Forwarding
+port-forward-backend:
+	kubectl port-forward svc/backend-service 30002:8080 30003:50051
+
+port-forward-frontend:
+	kubectl port-forward svc/frontend-service 30001:80
 
 # Full Build & Deploy
-all: build-backend build-frontend build-democtl push-backend push-frontend push-democtl apply-k8s
+all: build-backend build-frontend push-backend push-frontend apply-k8s
